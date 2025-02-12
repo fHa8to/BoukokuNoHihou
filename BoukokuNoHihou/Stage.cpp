@@ -6,7 +6,7 @@ namespace
 {
 	//モデルのファイル名
 	const char* const kModelFilename1 = "data/model/stage/stage.mv1";
-	const char* const kModelFilename2 = "data/model/stage/stage.mv1";
+	const char* const kModelFilename2 = "data/model/stage/stage1.mv1";
 
 	//モデルのサイズ変更
 	constexpr float kExpansion = 3.0f;

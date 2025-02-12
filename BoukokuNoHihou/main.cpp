@@ -67,7 +67,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		// FPS60に固定する
-		while (GetNowHiPerformanceCount() - start < 16667)
+		while (GetNowHiPerformanceCount() - start < 10000)
 		{
 			// 16.66ミリ秒(16667マイクロ秒)経過するまで待つ
 		}

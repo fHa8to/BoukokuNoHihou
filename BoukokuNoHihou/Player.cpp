@@ -1,6 +1,7 @@
 #include "Player.h"
 #include "DxLib.h"
 #include "Enemy.h"
+#include "BossEnemy.h"
 #include "Pad.h"
 #include "Stage.h"
 #include <cmath>
@@ -33,7 +34,7 @@ namespace
 	constexpr float kAnimChangeRateSpeed = 1.0f / kAnimChangeFrame;
 
 	//アナログスティックによる移動関連
-	constexpr float kMaxSpeed = 0.3f;		//プレイヤーの最大移動速度
+	constexpr float kMaxSpeed = 0.4f;		//プレイヤーの最大移動速度
 	constexpr float kAnalogRaneMin = 0.1f;	//アナログスティックの入力判定範囲
 	constexpr float kAnalogRaneMax = 0.8f;
 	constexpr float kAnglogInputMax = 1000.0f;	//アナログスティックの入力されるベクトルに
@@ -45,13 +46,15 @@ namespace
 }
 
 Player::Player() :
-	m_modelHandle(-1),
+	m_modelHandle(0),
+	m_handle(0),
 	m_pos(VGet(0.0f, 0.0f, 0.0f)),
 	m_attackPos(VGet(0.0f, 0.0f, 0.0f)),
 	m_mapHitColl(VGet(0.0f, 0.0f, 0.0f)),
 	m_currentAnimNo(-1),
 	m_prevAnimNo(-1),
 	m_animBlendRate(0.0f),
+	m_animSpeed(0.0f),
 	m_angle(kInitAngle),
 	m_modelRadius(4.0f),
 	m_radius(6.0f),
@@ -70,14 +73,22 @@ Player::Player() :
 	m_isIdle(false),
 	m_isFloor(false),
 	m_isDeath(false),
-	m_isUnderAttack(false),
-	m_isDamag(false),
+	m_isEnemyUnderAttack(false),
+	m_isBossUnderAttack(false),
+	m_isDamage(false),
 	m_moveFlag(false),
 	m_hitFlag(false),
 	m_kabeNum(0),
 	m_yukaNum(0)
 {
-
+	// 各ステートに対応するアニメーションの再生速度を設定
+	m_animSpeedMap[State::kIdle] = 1.0f;
+	m_animSpeedMap[State::kWalk] = 1.5f;
+	m_animSpeedMap[State::kRun] = 1.5f;
+	m_animSpeedMap[State::kJump] = 1.0f;
+	m_animSpeedMap[State::kAttack] = 1.5f;
+	m_animSpeedMap[State::kDamage] = 1.0f;
+	m_animSpeedMap[State::kDeath] = 0.8f;
 }
 
 Player::~Player()
@@ -87,6 +98,7 @@ Player::~Player()
 void Player::Load()
 {
 	m_modelHandle = MV1LoadModel(kModelFilename);
+	m_handle = LoadGraph("data/image/GameUI.png");
 }
 
 void Player::Delete()
@@ -107,7 +119,7 @@ void Player::Init()
 	m_animBlendRate = 1.0f;
 
 	//プレイヤーの初期位置設定
-	m_pos = VGet(0.0f, 10.0f, -20.0f);
+	m_pos = VGet(0.0f, 5.0f, -20.0f);
 	m_move = VGet(0.0f, 0.0f, 0.0f);
 
 
@@ -115,7 +127,7 @@ void Player::Init()
 
 }
 
-void Player::Update(Stage& stage)
+void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, Stage& stage)
 {
 
 	Pad::Update();
@@ -143,8 +155,10 @@ void Player::Update(Stage& stage)
 	//現在のステートを確認
 	m_nowState = isGetState();
 
+	m_prevPos = m_pos;
+
 	//移動処理
-	if ((m_nowState != State::kJump) && (m_nowState != State::kDeath) && (m_nowState != State::kAttack))
+	if(!m_isDamage && (m_nowState == State::kIdle) || (m_nowState == State::kWalk) || (m_nowState == State::kRun))
 	{ 
 		Move(); 
 		m_isMove = true;
@@ -154,6 +168,7 @@ void Player::Update(Stage& stage)
 		m_isMove = false;
 	}
 
+
 	//Jump
 	if ((m_nowState != State::kJump) && (m_nowState != State::kDeath))
 	{
@@ -162,9 +177,9 @@ void Player::Update(Stage& stage)
 			Jump();
 		}
 	}
-
+	
 	//Attack
-	if (m_nowState != State::kAttack)
+	if ((m_nowState != State::kAttack) && (m_nowState != State::kDamage))
 	{
 		if (Pad::IsPress(PAD_INPUT_3))
 		{
@@ -177,11 +192,11 @@ void Player::Update(Stage& stage)
 	if (Pad::IsPress(PAD_INPUT_2) && m_move.y == 0)
 	{
 		m_runFrame++;
-		if (m_runFrame > 10)
+		if (m_runFrame > 5)
 		{
 			m_isRun = true;
 
-			//動くスピードを1.5倍
+			//動くスピード
 			m_move = VScale(m_move, 2.0f);
 
 		}
@@ -203,20 +218,34 @@ void Player::Update(Stage& stage)
 	if (m_nowState == State::kDeath) { DeathAnim(); }	//死
 
 
-
 	//座標に移動量を足す
 	m_pos = VAdd(m_pos, m_move);
 
 	//重力
 	m_move.y -= 0.1;
 
+	// 敵の攻撃による吹っ飛びを防ぐための処理
+	if (m_isDamage)
+	{
+		// ダメージを受けた際の移動量を制限
+		m_move = VScale(m_move, 0.0f);
+	}
+
 	if (m_isAttack)
 	{
-		m_isUnderAttack = true;
+		if (IsAttackColliding(m_pEnemy))
+		{
+			m_isEnemyUnderAttack = true;
+		}
+		if (IsBossAttackColliding(m_pBossEnemy))
+		{
+			m_isBossUnderAttack = true;
+		}
 	}
 	else
 	{
-		m_isUnderAttack = false;
+		m_isEnemyUnderAttack = false;
+		m_isBossUnderAttack = false;
 	}
 
 
@@ -227,7 +256,6 @@ void Player::Update(Stage& stage)
 		m_hp = 0;
 		m_isDeath = true;
 	}
-
 
 	CorrectPosition(stage);
 
@@ -240,10 +268,11 @@ void Player::Draw()
 	MV1DrawModel(m_modelHandle);
 
 	// HP の値分の大きさだが四角に収まるように値を大きくします
-	DrawBox(196, 646, 204 + PLAYER_HP_MAX * PLAYER_DRAW_SIZE, 690, 0x000000, true);
-	DrawBox(197, 647, 203 + PLAYER_HP_MAX * PLAYER_DRAW_SIZE, 689, 0xffffff, true);
-	DrawBox(199, 649, 201 + PLAYER_HP_MAX * PLAYER_DRAW_SIZE, 687, 0x000000, true);
-	DrawBox(200, 650, 200 + m_hp * PLAYER_DRAW_SIZE, 686, 0x00ff00, true);
+	DrawBox(39, 50, 42 + PLAYER_HP_MAX * PLAYER_DRAW_SIZE, 80, 0x000000, true);
+	DrawBox(40, 50, 40 + m_hp * PLAYER_DRAW_SIZE, 80, 0x26b609, true);
+
+	//UIの画像を描画
+	DrawGraph(23, 35, m_handle, true);
 
 #ifdef _DEBUG
 
@@ -267,7 +296,7 @@ bool Player::UpdateAnim(int attachNo)
 
 	//アニメーションを進行させる
 	float now = MV1GetAttachAnimTime(m_modelHandle, attachNo);	//現在の再生カウントを取得
-	now += 0.5f;	//アニメーション進める
+	now += 0.5f * m_animSpeed; // アニメーションを再生速度に応じて進める
 
 	//現在再生中のアニメーションの総カウントを取得
 	float total = MV1GetAttachAnimTotalTime(m_modelHandle, attachNo);
@@ -284,6 +313,7 @@ bool Player::UpdateAnim(int attachNo)
 		}
 		isLoop = true;
 		m_isAttack = false;
+		m_isDamage = false;
 	}
 
 	//進めた時間の設定
@@ -313,6 +343,9 @@ void Player::ChangeAnim(int animIndex)
 	MV1SetAttachAnimBlendRate(m_modelHandle, m_prevAnimNo, 1.0f - m_animBlendRate);
 	//変更後のアニメーション0%
 	MV1SetAttachAnimBlendRate(m_modelHandle, m_currentAnimNo, m_animBlendRate);
+
+	// 現在のステートに応じたアニメーションの再生速度を設定
+	m_animSpeed = m_animSpeedMap[m_nowState];
 }
 
 Player::State Player::isGetState()
@@ -324,7 +357,7 @@ Player::State Player::isGetState()
 	}
 
 	//ダメージ
-	if (m_isDamag == true && m_isAttack == true)
+	if (m_isDamage == true)
 	{
 		return State::kDamage;
 	}
@@ -417,7 +450,12 @@ void Player::Move()
 
 void Player::Jump()
 {
-	m_move.y = 4.5f;
+	// ジャンプ中も走っている時の速度を維持する
+	if (m_isRun)
+	{
+		m_move = VScale(m_move, 2.0f);
+	}
+	m_move.y = 4.0f;
 	
 }
 
@@ -506,6 +544,7 @@ void Player::DeathAnim()
 	//前のステートDeathじゃないなら、アニメーション切り替え
 	if (m_backState != State::kDeath)
 	{
+		m_isMove = false;
 		ChangeAnim(kDeathAnimIndex);
 		m_isStopEnd = true;
 	}
@@ -517,7 +556,7 @@ void Player::DeathAnim()
 
 /*当たり判定*/
 //カプセル同士の当たり判定
-bool Player::IsCapsuleColliding(std::shared_ptr<Enemy> m_pEnemy)
+bool Player::IsEnemyCapsuleColliding(std::shared_ptr<Enemy> m_pEnemy)
 {
 	// プレイヤーと敵のカプセルの端点を計算
 	m_topA = { m_pos.x, m_pos.y + upperPart, m_pos.z };
@@ -587,6 +626,76 @@ bool Player::IsCapsuleColliding(std::shared_ptr<Enemy> m_pEnemy)
 	return false; // 衝突は発生していない
 }
 
+bool Player::IsBossEnemyCapsuleColliding(std::shared_ptr<BossEnemy> m_pBossEnemy)
+{
+	// プレイヤーと敵のカプセルの端点を計算
+	m_topA = { m_pos.x, m_pos.y + upperPart, m_pos.z };
+	m_bottomA = { m_pos.x, m_pos.y + bottom, m_pos.z };
+	m_topB = { m_pBossEnemy->GetPos().x, m_pBossEnemy->GetPos().y + upperPart, m_pBossEnemy->GetPos().z };
+	m_bottomB = { m_pBossEnemy->GetPos().x, m_pBossEnemy->GetPos().y + bottom, m_pBossEnemy->GetPos().z };
+
+	// カプセルの中心点
+	VECTOR centerA = { (m_bottomA.x + m_topA.x) / 2, (m_bottomA.y + m_topA.y) / 2, (m_bottomA.z + m_topA.z) / 2 };
+	VECTOR centerB = { (m_bottomB.x + m_topB.x) / 2, (m_bottomB.y + m_topB.y) / 2, (m_bottomB.z + m_topB.z) / 2 };
+
+	// 各カプセルの端点間の最短距離を計算する
+	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2) {
+		// 直線の距離の最短を求める
+		// ここで、2つの線分の最短距離を計算します
+		VECTOR dir1 = { top1.x - bottom1.x, top1.y - bottom1.y, top1.z - bottom1.z };
+		VECTOR dir2 = { top2.x - bottom2.x, top2.y - bottom2.y, top2.z - bottom2.z };
+		VECTOR diff = { bottom1.x - bottom2.x, bottom1.y - bottom2.y, bottom1.z - bottom2.z };
+
+		float a = dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z;
+		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
+		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
+		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + dir2.z * diff.z;
+
+		float det = a * c - b * b;
+		if (det == 0.0f) {
+			return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		}
+
+		float s = (b * e - c * d) / det;
+		float t = (a * e - b * d) / det;
+
+		if (s < 0.0f) s = 0.0f;
+		else if (s > 1.0f) s = 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		else if (t > 1.0f) t = 1.0f;
+
+		VECTOR closestA = { bottom1.x + s * dir1.x, bottom1.y + s * dir1.y, bottom1.z + s * dir1.z };
+		VECTOR closestB = { bottom2.x + t * dir2.x, bottom2.y + t * dir2.y, bottom2.z + t * dir2.z };
+
+		VECTOR delta = { closestA.x - closestB.x, closestA.y - closestB.y, closestA.z - closestB.z };
+		return std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		};
+
+	// プレイヤーのカプセルと敵のカプセルの端点間の最短距離を計算
+	float distance = capsuleSegmentDistance(m_bottomA, m_topA, m_bottomB, m_topB);
+
+	// 衝突判定
+	if (distance < m_modelRadius + m_pBossEnemy->GetRadius()) {
+		// 衝突が発生した場合、反発ベクトルを計算してめり込みを解消
+		float overlap = m_modelRadius + m_pBossEnemy->GetRadius() - distance;
+
+		// 衝突方向の単位ベクトル
+		VECTOR delta = { centerA.x - centerB.x, centerA.y - centerB.y, centerA.z - centerB.z };
+		float norm = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		delta = { delta.x / norm, delta.y / norm, delta.z / norm };
+
+		// プレイヤーの位置を修正
+		m_pos.x += delta.x * overlap * 0.5f;
+		m_pos.y += delta.y * overlap * 0.5f;
+		m_pos.z += delta.z * overlap * 0.5f;
+
+		return true; // 衝突が発生した
+	}
+
+	return false; // 衝突は発生していない
+}
+
 //攻撃の当たり判定
 bool Player::IsAttackColliding(std::shared_ptr<Enemy> m_pEnemy)
 {
@@ -605,6 +714,27 @@ bool Player::IsAttackColliding(std::shared_ptr<Enemy> m_pEnemy)
 	}
 
 	return false;
+}
+
+bool Player::IsBossAttackColliding(std::shared_ptr<BossEnemy> m_pBossEnemy)
+{
+
+	float delX = (m_attackPos.x - m_pBossEnemy->GetPos().x) * (m_attackPos.x - m_pBossEnemy->GetPos().x);
+	float delY = (m_attackPos.y - m_pBossEnemy->GetPos().y + (upperPart / 2)) * (m_attackPos.y - m_pBossEnemy->GetPos().y + (upperPart / 2));
+	float delZ = (m_attackPos.z - m_pBossEnemy->GetPos().z) * (m_attackPos.z - m_pBossEnemy->GetPos().z);
+
+	//球と球の距離
+	float Distance = sqrt(delX + delY + delZ);
+
+	//球と球の距離が剣とエネミーの半径よりも小さい場合
+	if (Distance < m_radius + m_pBossEnemy->GetRadius())
+	{
+
+		return true;
+	}
+
+	return false;
+
 }
 
 
@@ -737,7 +867,7 @@ void Player::CorrectPosition(Stage& stage)
 		//壁に当たっていたら壁から押し出す処理を行う
 		if (m_hitFlag == true)
 		{
-			for (int i = 0; i < PLAYER_MAX_HITCOLL; i++)
+			for (int i = 0; i < 16; i++)
 			{
 
 				//壁ポリゴンの数だけ繰り返し
@@ -749,8 +879,18 @@ void Player::CorrectPosition(Stage& stage)
 					if (HitCheck_Capsule_Triangle(m_mapHitColl, VAdd(m_mapHitColl, VGet(0.0f, upperPart, 0.0f)), m_modelRadius,
 						Poly->Position[0], Poly->Position[1], Poly->Position[2]) == false) continue;
 
-					//当たっていたら規定距離分プレイヤーを壁の法線方向に移動させる
-					m_pos = VAdd(m_pos, VScale(Poly->Normal, kMaxSpeed + 0.4f));
+					if (m_nowState != State::kRun)
+					{
+						//当たっていたら規定距離分プレイヤーを壁の法線方向に移動させる
+						m_pos = VAdd(m_pos, VScale(Poly->Normal, kMaxSpeed));
+
+					}
+					else if (m_nowState == State::kRun)
+					{
+						//当たっていたら規定距離分プレイヤーを壁の法線方向に移動させる
+						m_pos = VAdd(m_pos, VScale(Poly->Normal, kMaxSpeed * 2));
+
+					}
 
 					//移動した上で壁ポリゴンと接触しているかどうかを判定
 					for (j = 0; j < m_kabeNum; j++)
@@ -836,7 +976,7 @@ void Player::CorrectPosition(Stage& stage)
 				Poly = Yuka[i];
 
 				//ジャンプ中の場合は頭の先から足先より少し低い位置の間で当たっているかを判定
-				LineRes = HitCheck_Line_Triangle(VAdd(m_mapHitColl, VGet(0.0f, upperPart, 0.0f)), VAdd(m_mapHitColl, VGet(0.0f, 0.0f , 0.0f)),
+				LineRes = HitCheck_Line_Triangle(VAdd(m_mapHitColl, VGet(0.0f, upperPart, 0.0f)), m_mapHitColl,
 					Poly->Position[0], Poly->Position[1], Poly->Position[2]);
 
 				//当たっていなかったら何もしない

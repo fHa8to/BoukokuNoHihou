@@ -121,6 +121,7 @@ void SceneClear::Draw()
 
 	DrawGraph(0, 0, m_handle, true);
 
+	DrawString(Game::kScreenWidth / 2 - 150, Game::kScreenHeight - 220, "Aボタンでタイトルへ", GetColor(255, 255, 255));
 
 	//フェードの描画
 	SetDrawBlendMode(DX_BLENDMODE_ALPHA, m_fadeAlpha); //半透明で表示
