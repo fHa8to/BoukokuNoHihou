@@ -17,6 +17,7 @@
 
 class Player;
 class Stage;
+class Ui;
 
 class Enemy
 {
@@ -25,7 +26,7 @@ public:
 	virtual ~Enemy();
 
 	void Init();
-	void Update(std::shared_ptr<Player> m_pPlayer, Stage& stage);
+	void Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi, Stage& stage);
 	void Draw(std::shared_ptr<Player> m_pPlayer);
 	void End();
 

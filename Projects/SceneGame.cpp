@@ -50,6 +50,7 @@ SceneGame::SceneGame() :
     m_pCamera = std::make_shared<Camera>();
     m_pStage = std::make_shared<Stage>();
     m_pSkyDome = std::make_shared<SkyDome>();
+    m_pUi = std::make_shared<Ui>();
 
 }
 
@@ -77,22 +78,17 @@ void SceneGame::Init()
 
     m_pBossEnemy->Init();
 
-    m_buttonBoxHandle = LoadGraph("data/image/buttonBox.png");
+    m_pUi->Init();
 
-
-    m_buttonAHandle = LoadGraph("data/image/buttonA.png");
-    m_buttonBHandle = LoadGraph("data/image/buttonB.png");
-    m_buttonXHandle = LoadGraph("data/image/buttonX.png");
-    m_buttonYHandle = LoadGraph("data/image/buttonY.png");
 }
 
 
 std::shared_ptr<SceneBase> SceneGame::Update()
 {
     //hpを取得
-    float playerHp = m_pPlayer->GetHp();
+    float playerHp = m_pUi->GetPlayerHp();
     float enemyHp = m_pEnemy->GetHp();
-    float bossEnemyHp = m_pBossEnemy->GetHp();
+    float bossEnemyHp = m_pUi->GetBossHp();
 
     VECTOR toEnemy = VSub(m_pEnemy->GetPos(), m_pPlayer->GetPos());
     float length = VSize(toEnemy);
@@ -106,11 +102,13 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_pCamera->PlayerCameraUpdate(*m_pPlayer);
 
-    m_pEnemy->Update(m_pPlayer, *m_pStage);
+    m_pEnemy->Update(m_pPlayer, m_pUi, *m_pStage);
 
-    m_pBossEnemy->Update(m_pPlayer, *m_pStage);
-    m_pPlayer->Update(m_pEnemy, m_pBossEnemy, *m_pStage);
+    m_pBossEnemy->Update(m_pPlayer, m_pUi,*m_pStage);
+    m_pPlayer->Update(m_pEnemy, m_pBossEnemy, m_pUi, *m_pStage);
     m_pStage->Update();
+
+    m_pUi->Update();
 
     //プレイヤーと敵の当たり判定
     m_isGimmickHit = m_pPlayer->IsEnemyCapsuleColliding(m_pEnemy);
@@ -203,9 +201,12 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                 {
                     //HPを減らす
                     bossEnemyHp -= 1;
-                    m_pBossEnemy->SetHp(bossEnemyHp);
+                    m_pUi->SetBossHp(bossEnemyHp);
                     m_isPlayerBossAttackCoolTime = true;
-                    m_pBossEnemy->SetDamage(true);
+                    if (m_pUi->GetBossHp() >= 1)
+                    {
+                        m_pBossEnemy->SetState(BossEnemy::kDamage);
+                    }
                     m_playerFrame = 0;
                 }
             }
@@ -235,7 +236,10 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                     enemyHp -= 1;
                     m_pEnemy->SetHp(enemyHp);
                     m_isPlayerAttackCoolTime = true;
-                    m_pEnemy->SetDamage(true);
+                    if (m_pEnemy->GetHp() >= 1)
+                    {
+                        m_pEnemy->SetState(Enemy::kDamage);
+                    }
                     m_playerFrame = 0;
                 }
             }
@@ -262,7 +266,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                 if (m_isEnemyAttack)
                 {
                     playerHp -= 1;
-                    m_pPlayer->SetHp(playerHp);
+                    m_pUi->SetPlayerHp(playerHp);
                     m_enemyAttackCoolTimeCounter = 50; // クールタイムを設定
                     m_pPlayer->SetDamage(true);
                     m_enemyFrame = 0;
@@ -283,7 +287,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                 if (m_isBossAttack)
                 {
                     playerHp -= 2;
-                    m_pPlayer->SetHp(playerHp);
+                    m_pUi->SetPlayerHp(playerHp);
                     m_bossEnemyAttackCoolTimeCounter = 50; // クールタイムを設定
                     m_pPlayer->SetDamage(true);
                     m_bossEnemyFrame = 0;
@@ -294,7 +298,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     }
 
 
-    if (m_pPlayer->GetHp() == 0)
+    if (m_pUi->GetPlayerHp() == 0)
     {
         m_playerDeath++;
         if (m_playerDeath >= 220)
@@ -307,13 +311,14 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     {
         m_enemyDeath++;
         m_pEnemy->SetState(Enemy::kDeath);
+
         if (m_enemyDeath >= 220)
         {
             m_enemyDeath = 0;
         }
     }
 
-    if (m_pBossEnemy->GetHp() == 0)
+    if (m_pUi->GetBossHp() == 0)
     {
         m_bossEnemyDeath++;
         m_pBossEnemy->SetState(BossEnemy::kDeath);
@@ -362,12 +367,12 @@ void SceneGame::Draw()
     m_pEnemy->Draw(m_pPlayer);
     m_pPlayer->Draw();
 
-    DrawGraph(Game::kScreenWidth - 215, Game::kScreenHeight - 255, m_buttonBoxHandle, true);
+    m_pUi->PlayerDraw();
 
-    DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 250, m_buttonAHandle, true);
-    DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 200, m_buttonBHandle, true);
-    DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 150, m_buttonXHandle, true);
-
+    if (m_isBossEnemyTranslation)
+    {
+        m_pUi->BossDraw();
+    }
 
 
 #ifdef _DEBUG
@@ -448,10 +453,6 @@ void SceneGame::Draw()
 
 #endif // _DEBUG
 
-
-    //DrawString(Game::kScreenWidth - 150, Game::kScreenHeight - 250, "ジャンプ", 0xffffff);
-    //DrawString(Game::kScreenWidth - 150, Game::kScreenHeight - 200, "ダッシュ", 0xffffff);
-    //DrawString(Game::kScreenWidth - 150, Game::kScreenHeight - 150, "攻撃", 0xffffff);
 
     //フェードの描画
     SetDrawBlendMode(DX_BLENDMODE_ALPHA, m_fadeAlpha); //半透明で表示

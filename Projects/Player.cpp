@@ -4,6 +4,7 @@
 #include "BossEnemy.h"
 #include "Pad.h"
 #include "Stage.h"
+#include "Ui.h"
 #include <cmath>
 #include <cassert>
 
@@ -35,7 +36,7 @@ namespace
 
 	//アナログスティックによる移動関連
 	constexpr float kMaxSpeed = 0.4f;		//プレイヤーの最大移動速度
-	constexpr float kAnalogRaneMin = 0.1f;	//アナログスティックの入力判定範囲
+	constexpr float kAnalogRaneMin = 0.4f;	//アナログスティックの入力判定範囲
 	constexpr float kAnalogRaneMax = 0.8f;
 	constexpr float kAnglogInputMax = 1000.0f;	//アナログスティックの入力されるベクトルに
 
@@ -61,7 +62,6 @@ Player::Player() :
 	m_attackRadius(5.0f),
 	m_analogX(0.0f),
 	m_analogZ(0.0f),
-	m_hp(0),
 	m_runFrame(0),
 	m_move(),
 	m_nowState(State::kIdle),
@@ -83,8 +83,8 @@ Player::Player() :
 {
 	// 各ステートに対応するアニメーションの再生速度を設定
 	m_animSpeedMap[State::kIdle] = 1.0f;
-	m_animSpeedMap[State::kWalk] = 1.5f;
-	m_animSpeedMap[State::kRun] = 1.5f;
+	m_animSpeedMap[State::kWalk] = 1.2f;
+	m_animSpeedMap[State::kRun] = 1.3f;
 	m_animSpeedMap[State::kJump] = 1.0f;
 	m_animSpeedMap[State::kAttack] = 1.5f;
 	m_animSpeedMap[State::kDamage] = 1.0f;
@@ -108,7 +108,6 @@ void Player::Delete()
 
 void Player::Init()
 {
-	m_hp = PLAYER_HP_MAX;
 
 	//プレイヤースピード初期化
 	m_speed = kMaxSpeed;
@@ -127,7 +126,7 @@ void Player::Init()
 
 }
 
-void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, Stage& stage)
+void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, Stage& stage)
 {
 
 	Pad::Update();
@@ -197,7 +196,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 			m_isRun = true;
 
 			//動くスピード
-			m_move = VScale(m_move, 2.0f);
+			m_move = VScale(m_move, 1.5f);
 
 		}
 	}
@@ -251,9 +250,9 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 
 
 	//HPをマイナスにさせないため
-	if (m_hp <= 0)
+	if (m_pUi->GetPlayerHp() <= 0)
 	{
-		m_hp = 0;
+		m_pUi->SetPlayerHp(0);
 		m_isDeath = true;
 	}
 
@@ -267,12 +266,6 @@ void Player::Draw()
 {
 	MV1DrawModel(m_modelHandle);
 
-	// HP の値分の大きさだが四角に収まるように値を大きくします
-	DrawBox(39, 50, 42 + PLAYER_HP_MAX * PLAYER_DRAW_SIZE, 80, 0x000000, true);
-	DrawBox(40, 50, 40 + m_hp * PLAYER_DRAW_SIZE, 80, 0x26b609, true);
-
-	//UIの画像を描画
-	DrawGraph(23, 35, m_handle, true);
 
 #ifdef _DEBUG
 
@@ -346,6 +339,7 @@ void Player::ChangeAnim(int animIndex)
 
 	// 現在のステートに応じたアニメーションの再生速度を設定
 	m_animSpeed = m_animSpeedMap[m_nowState];
+
 }
 
 Player::State Player::isGetState()
@@ -617,7 +611,6 @@ bool Player::IsEnemyCapsuleColliding(std::shared_ptr<Enemy> m_pEnemy)
 
 		// プレイヤーの位置を修正
 		m_pos.x += delta.x * overlap * 0.5f;
-		m_pos.y += delta.y * overlap * 0.5f;
 		m_pos.z += delta.z * overlap * 0.5f;
 
 		return true; // 衝突が発生した
@@ -687,7 +680,6 @@ bool Player::IsBossEnemyCapsuleColliding(std::shared_ptr<BossEnemy> m_pBossEnemy
 
 		// プレイヤーの位置を修正
 		m_pos.x += delta.x * overlap * 0.5f;
-		m_pos.y += delta.y * overlap * 0.5f;
 		m_pos.z += delta.z * overlap * 0.5f;
 
 		return true; // 衝突が発生した

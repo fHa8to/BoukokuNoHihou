@@ -3,6 +3,7 @@
 #include "SceneGame.h"
 #include "Game.h"
 #include "Pad.h"
+#include "Ui.h"
 
 
 //スピード
@@ -55,7 +56,6 @@ namespace
 
 SceneTitle::SceneTitle() :
 	m_isCommand(false),
-	m_handle(0),
 	m_bottnHandle(0),
 	m_modelHandle(MV1LoadModel("data/model/skeleton/skeleton1.mv1")),
 	m_fadeAlpha(0),
@@ -66,6 +66,8 @@ SceneTitle::SceneTitle() :
 	m_selectedMenuItem(0)
 {
 	m_pStage = std::make_shared<Stage>();
+	m_pUi = std::make_shared<Ui>();
+
 	m_pos = VGet(-121.0f, 170.0f, -137.0f);
 	m_move = VGet(0.0f, 0.0f, 0.0f);
 
@@ -82,7 +84,6 @@ void SceneTitle::Init()
 {
 	m_pStage->Init();
 
-	m_handle = LoadGraph("data/image/GameTitle.png");
 
 	m_bottnHandle = LoadGraph("data/image/GameBottn1.png");
 
@@ -258,8 +259,7 @@ void SceneTitle::Draw()
 #endif
 	
 
-
-	DrawGraph(Game::kScreenWidth / 4, Game::kScreenHeight / 6, m_handle, true);
+	m_pUi->TitleDraw();
 
 
 	// メニュー項目の描画
@@ -289,8 +289,7 @@ void SceneTitle::Draw()
 void SceneTitle::End()
 {
 	m_pStage->End();
-	DeleteGraph(m_handle);
-	DeleteGraph(m_bottnHandle);
+	m_pUi->End();
 	MV1DeleteModel(m_modelHandle);
 }
 

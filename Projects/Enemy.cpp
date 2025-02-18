@@ -3,6 +3,7 @@
 #include "Pad.h"
 #include "Player.h"
 #include "Stage.h"
+#include "Ui.h"
 
 #define D2R(deg) ((deg)* DX_PI_F/180.0f)
 
@@ -23,7 +24,7 @@ namespace
 	constexpr int kRnuAnimIndex = 2;
 	constexpr int kAttackAnimIndex = 3;
 	constexpr int kDamageAnimIndex = 4;
-	constexpr int kDeadAnimIndex = 4;
+	constexpr int kDeadAnimIndex = 5;
 
 	//アニメーションの切り替えにかかるフレーム数
 	constexpr float kAnimChangeFrame = 8.0f;
@@ -105,7 +106,7 @@ void Enemy::Init()
 
 }
 
-void Enemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
+void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi, Stage& stage)
 {
 
 	Pad::Update();
@@ -168,12 +169,12 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
 	if (!m_isAttack)
 	{
 		//攻撃の時
-		if (m_state == kAttack && m_pPlayer->GetHp() > 0)
+		if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 		{
 			if (!m_isAttack && m_attackDelayCounter == 0)
 			{
 				// 攻撃の時
-				if (m_state == kAttack && m_pPlayer->GetHp() > 0)
+				if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 				{
 					if (!m_isAttack)
 					{
@@ -245,6 +246,17 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
 		{
 			m_isRnu = false;
 		}
+
+		if (m_state == kDamage)
+		{
+				ChangeAnim(kDamageAnimIndex);
+				m_isDamage = true;
+		}
+		else
+		{
+			m_isDamage = false;
+		}
+
 	}
 	else
 	{
@@ -262,14 +274,6 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
 
 	}
 
-	if (m_isDamage)
-	{
-		if (m_state == kDamage)
-		{
-			ChangeAnim(kDamageAnimIndex);
-		}
-		m_isDamage = false;
-	}
 
 	//HPをマイナスにさせないため
 	if (m_hp <= 0) m_hp = 0;

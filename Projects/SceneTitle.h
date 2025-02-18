@@ -8,6 +8,7 @@
 #define C_MAX_POINT 22
 
 class Stage;
+class Ui;
 
 class SceneTitle : public SceneBase
 {
@@ -22,6 +23,7 @@ public:
 
 private:
 	std::shared_ptr<Stage> m_pStage;
+	std::shared_ptr<Ui> m_pUi;
 
 private:
 

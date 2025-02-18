@@ -1,6 +1,18 @@
 #pragma once
 #include "DxLib.h"
 
+#define PLAYER_MAX_HITCOLL 21836 //ˆ—‚·‚éƒRƒŠƒWƒ‡ƒ“ƒ|ƒŠƒSƒ“‚ÌÅ‘å”
+
+// Å‘å‚g‚o
+#define PLAYER_HP_MAX		25
+// ‚g‚o‚P‚Å‚Ç‚ê‚¾‚¯ƒo[‚ğL‚Î‚·‚©
+#define PLAYER_DRAW_SIZE	20
+
+// Å‘å‚g‚o
+#define BOSS_ENEMY_HP_MAX		16
+// ‚g‚o‚P‚Å‚Ç‚ê‚¾‚¯ƒo[‚ğL‚Î‚·‚©
+#define BOSS_ENEMY_DRAW_SIZE	51
+
 namespace Game
 {
 

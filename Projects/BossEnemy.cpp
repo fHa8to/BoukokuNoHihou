@@ -1,5 +1,6 @@
 #include "BossEnemy.h"
 #include "Player.h"
+#include "Ui.h"
 #include "Stage.h"
 #include <cmath>
 #include <cassert>
@@ -18,7 +19,7 @@ namespace
 	constexpr int kRnuAnimIndex = 2;
 	constexpr int kAttackAnimIndex = 3;
 	constexpr int kDamageAnimIndex = 4;
-	constexpr int kDeadAnimIndex = 4;
+	constexpr int kDeadAnimIndex = 5;
 
 
 	//アニメーションの切り替えにかかるフレーム数
@@ -98,7 +99,7 @@ void BossEnemy::Init()
 	MV1SetScale(m_modelHandle, VGet(kExpansion, kExpansion, kExpansion));
 }
 
-void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
+void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi, Stage& stage)
 {
 	//アニメーションの切り替え
 	if (m_prevAnimNo != -1)
@@ -149,12 +150,12 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
 	if (!m_isAttack)
 	{
 		//攻撃の時
-		if (m_state == kAttack && m_pPlayer->GetHp() > 0)
+		if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 		{
 			if (!m_isAttack && m_attackDelayCounter == 0)
 			{
 				// 攻撃の時
-				if (m_state == kAttack && m_pPlayer->GetHp() > 0)
+				if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 				{
 					if (!m_isAttack)
 					{
@@ -225,6 +226,16 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
 		{
 			m_isRnu = false;
 		}
+
+		if (m_state == kDamage)
+		{
+			ChangeAnim(kDamageAnimIndex);
+			m_isDamage = true;
+		}
+		else
+		{
+			m_isDamage = false;
+		}
 	}
 	else
 	{
@@ -243,18 +254,13 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, Stage& stage)
 
 	}
 
-	if (m_isDamage)
-	{
-		if (m_state == kDamage)
-		{
-			ChangeAnim(kDamageAnimIndex);
-		}
-		m_isDamage = false;
-	}
 
 
 	//HPをマイナスにさせないため
-	if (m_hp <= 0) m_hp = 0;
+	if (m_pUi->GetBossHp() <= 0)
+	{
+		m_pUi->SetBossHp(0);
+	}
 
 	if (m_isAttack)
 	{
@@ -277,20 +283,6 @@ void BossEnemy::Draw(std::shared_ptr<Player> m_pPlayer)
 {
 	//エネミーモデル描画
 	MV1DrawModel(m_modelHandle);
-
-
-	if (Translation(m_pPlayer))
-	{
-		//HPバー
-	// HP の値分の大きさだが四角に収まるように値を大きくします
-		DrawBox(Game::kScreenWidth / 2 - 410, Game::kScreenHeight - 180, Game::kScreenWidth / 2 - 410 + BOSS_ENEMY_HP_MAX * BOSS_ENEMY_DRAW_SIZE, Game::kScreenHeight - 150, 0x000000, true);
-		DrawBox(Game::kScreenWidth / 2 - 410, Game::kScreenHeight - 180, Game::kScreenWidth / 2 - 410 + m_hp * BOSS_ENEMY_DRAW_SIZE, Game::kScreenHeight - 150, 0xff0000, true);
-
-		//UIの画像を描画
-		DrawGraph(Game::kScreenWidth / 2 -427, Game::kScreenHeight -200, m_handle, true);
-	}
-
-
 
 
 #ifdef _DEBUG

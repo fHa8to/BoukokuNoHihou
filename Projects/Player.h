@@ -5,17 +5,20 @@
 #include <cmath>
 #include <unordered_map>
 
-#define PLAYER_MAX_HITCOLL 21836 //処理するコリジョンポリゴンの最大数
+//#define PLAYER_MAX_HITCOLL 21836 //処理するコリジョンポリゴンの最大数
 
-// 最大ＨＰ
-#define PLAYER_HP_MAX		25
-// ＨＰ１でどれだけバーを伸ばすか
-#define PLAYER_DRAW_SIZE	20
+//// 最大ＨＰ
+//#define PLAYER_HP_MAX		25
+//// ＨＰ１でどれだけバーを伸ばすか
+//#define PLAYER_DRAW_SIZE	20
+
 
 
 class Enemy;
 class BossEnemy;
 class Stage;
+class Ui;
+
 
 class Player
 {
@@ -27,7 +30,7 @@ public:
 	void Delete();
 
 	void Init();
-	void Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, Stage& stage);
+	void Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, Stage& stage);
 	void Draw();
 
 	//カメラの方向を取得
@@ -38,10 +41,6 @@ public:
 
 	//プレイヤーの座標を取得
 	const VECTOR& GetPrevPos() const { return m_prevPos; }
-
-	//プレイヤーのHPを取得
-	const int& GetHp() const { return m_hp; }
-	void SetHp(const int hp) { m_hp = hp; }
 
 
 	//攻撃の取得
@@ -186,10 +185,7 @@ private:
 	float m_analogX;
 	float m_analogZ;
 
-	//HP
-	int m_hp;
 	float m_speed;  //キャラのスピード
-
 
 	//stateフラグ
 	bool m_isMove;

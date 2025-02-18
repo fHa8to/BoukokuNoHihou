@@ -43,7 +43,7 @@ void Camera::PlayerCameraUpdate(Player& player)
 	int analogZ = 0;
 
 	GetJoypadAnalogInputRight(&analogX, &analogZ, DX_INPUT_PAD1);	
-
+	//GetJoypadDirectInputState(DX_INPUT_PAD1, &input);
 	Pad::Update();
 
 

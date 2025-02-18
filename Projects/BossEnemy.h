@@ -1,19 +1,21 @@
 #pragma once
 #include "DxLib.h"
+#include "Game.h"
 #include <math.h>
 #include <memory>
 #include <unordered_map>
 
-#define PLAYER_MAX_HITCOLL 21836 //ˆ—‚·‚éƒRƒŠƒWƒ‡ƒ“ƒ|ƒŠƒSƒ“‚ÌÅ‘å”
+//#define PLAYER_MAX_HITCOLL 21836 //ˆ—‚·‚éƒRƒŠƒWƒ‡ƒ“ƒ|ƒŠƒSƒ“‚ÌÅ‘å”
 
-// Å‘å‚g‚o
-#define BOSS_ENEMY_HP_MAX		16
-// ‚g‚o‚P‚Å‚Ç‚ê‚¾‚¯ƒo[‚ğL‚Î‚·‚©
-#define BOSS_ENEMY_DRAW_SIZE	51
+//// Å‘å‚g‚o
+//#define BOSS_ENEMY_HP_MAX		16
+//// ‚g‚o‚P‚Å‚Ç‚ê‚¾‚¯ƒo[‚ğL‚Î‚·‚©
+//#define BOSS_ENEMY_DRAW_SIZE	51
 
 
 class Player;
 class Stage;
+class Ui;
 
 class BossEnemy
 {
@@ -21,7 +23,7 @@ public:
 	BossEnemy();
 	virtual ~BossEnemy();
 	void Init();
-	void Update(std::shared_ptr<Player> m_pPlayer, Stage& stage);
+	void Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi, Stage& stage);
 	void Draw(std::shared_ptr<Player> m_pPlayer);
 	void End();
 
@@ -30,9 +32,6 @@ public:
 	VECTOR& GetPos() { return m_pos; }
 	void SetPos(const VECTOR pos) { m_pos = pos; }
 
-	//“G‚ÌHP‚ğæ“¾
-	const int& GetHp() const { return m_hp; }
-	void SetHp(const int hp) { m_hp = hp; }
 
 	float GetRadius() { return m_modelRadius; }
 

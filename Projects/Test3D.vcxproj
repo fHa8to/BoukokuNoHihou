@@ -35,6 +35,7 @@
     <ClCompile Include="SceneTitle.cpp" />
     <ClCompile Include="SkyDome.cpp" />
     <ClCompile Include="Stage.cpp" />
+    <ClCompile Include="Ui.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BossEnemy.h" />
@@ -53,6 +54,7 @@
     <ClInclude Include="SceneTitle.h" />
     <ClInclude Include="SkyDome.h" />
     <ClInclude Include="Stage.h" />
+    <ClInclude Include="Ui.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

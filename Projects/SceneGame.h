@@ -9,6 +9,7 @@
 #include "Camera.h"
 #include "Stage.h"
 #include "SkyDome.h"
+#include "Ui.h"
 
 class Camera;
 class Player;
@@ -16,6 +17,7 @@ class Enemy;
 class BossEnemy;
 class Stage;
 class SkyDome;
+class Ui;
 
 class SceneGame : public SceneBase
 {
@@ -39,18 +41,13 @@ private:
 	std::shared_ptr<Camera> m_pCamera;
 	std::shared_ptr<Stage> m_pStage;
 	std::shared_ptr<SkyDome> m_pSkyDome;
+	std::shared_ptr<Ui> m_pUi;
 
 
 private:
 	//フェードイン、アウト
 	int m_fadeAlpha;
 
-	int m_modelHandle;
-	int m_buttonBoxHandle;
-	int m_buttonAHandle;
-	int m_buttonBHandle;
-	int m_buttonXHandle;
-	int m_buttonYHandle;
 
 
 	//シーン終了フラグ
