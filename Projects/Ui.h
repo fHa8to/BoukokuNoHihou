@@ -13,7 +13,7 @@ public:
 	void Init();
 	void Update();
 	void TitleDraw();
-	void PlayerDraw();
+	void PlayerDraw(const Player& player);
 	void BossDraw();
 	void End();
 
@@ -24,6 +24,10 @@ public:
 	//プレイヤーのHPを取得
 	const int& GetBossHp() const { return BossHp; }
 	void SetBossHp(const int bossHp) { BossHp = bossHp; }
+
+	//スキル時間を取得する
+	const int& GetSkill() const { return Skill; }
+	void SetSkillp(const int skill) { Skill = skill; }
 
 
 private:
@@ -37,11 +41,15 @@ private:
 	int m_buttonXHandle;
 	int m_buttonYHandle;
 
+	int m_skillHandle;
+
 	int PlayerHandle;
 	int BossHandle;
 	int PlayerHp;
 	int BossHp;
+	int Skill;
 
 	bool BossRange;
+
 };
 

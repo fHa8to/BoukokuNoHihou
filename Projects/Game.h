@@ -1,7 +1,7 @@
 #pragma once
 #include "DxLib.h"
 
-#define PLAYER_MAX_HITCOLL 21836 //処理するコリジョンポリゴンの最大数
+#define PLAYER_MAX_HITCOLL 21884 //処理するコリジョンポリゴンの最大数
 
 // 最大ＨＰ
 #define PLAYER_HP_MAX		25

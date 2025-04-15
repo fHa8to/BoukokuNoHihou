@@ -33,6 +33,7 @@
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneOver.cpp" />
     <ClCompile Include="SceneTitle.cpp" />
+    <ClCompile Include="Skill.cpp" />
     <ClCompile Include="SkyDome.cpp" />
     <ClCompile Include="Stage.cpp" />
     <ClCompile Include="Ui.cpp" />
@@ -52,6 +53,7 @@
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneOver.h" />
     <ClInclude Include="SceneTitle.h" />
+    <ClInclude Include="Skill.h" />
     <ClInclude Include="SkyDome.h" />
     <ClInclude Include="Stage.h" />
     <ClInclude Include="Ui.h" />

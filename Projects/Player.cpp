@@ -4,6 +4,7 @@
 #include "BossEnemy.h"
 #include "Pad.h"
 #include "Stage.h"
+#include "Skill.h"
 #include "Ui.h"
 #include <cmath>
 #include <cassert>
@@ -13,6 +14,7 @@ namespace
 {
 	//モデルのファイル名
 	const char* const kModelFilename = "data/model/ArcticTextures/player.mv1";
+	const char* const kModelFilename1 = "data/model/weapon/sword.mv1";
 
 	//モデルの向いてる位置の初期化
 	constexpr float kInitAngle = 3.143059f;
@@ -21,14 +23,19 @@ namespace
 	constexpr float kExpansion = 0.1f;
 
 	//アニメーション番号
+	constexpr int kFallingAnimIndex = 0;
 	constexpr int kIdleAnimIndex = 1;
 	constexpr int kWalkAnimIndex = 2;
 	constexpr int kRnuAnimIndex = 3;
-	constexpr int kJumpAnimIndex = 9;
 	constexpr int kAttackAnimIndex = 5;
-	constexpr int kFallingAnimIndex = 0;
-	constexpr int kDeathAnimIndex = 10;
-	constexpr int kDamageAnimIndex = 11;
+	constexpr int kAttackAnim1Index = 8;
+	constexpr int kAttackAnim2Index = 9;
+	constexpr int kAttackAnim3Index = 10;
+	constexpr int kJumpAnimIndex = 11;
+	constexpr int kDeathAnimIndex = 12;
+	constexpr int kDamageAnimIndex = 13;
+
+
 
 	//アニメーションの切り替えにかかるフレーム数
 	constexpr float kAnimChangeFrame = 8.0f;
@@ -44,22 +51,31 @@ namespace
 	constexpr int upperPart = 15;	//上部
 	constexpr int bottom = 2;		//下部
 
+	constexpr int kModelRadius = 4.0f;
+	constexpr int kAttackRadius = 6.0f;
+	constexpr int kRadiusRadius = 6.0f;
+
+
 }
 
 Player::Player() :
 	m_modelHandle(0),
+	m_modelHandle1(0),
 	m_handle(0),
 	m_pos(VGet(0.0f, 0.0f, 0.0f)),
 	m_attackPos(VGet(0.0f, 0.0f, 0.0f)),
 	m_mapHitColl(VGet(0.0f, 0.0f, 0.0f)),
+	m_handPos(VGet(0.0f, 0.0f, 0.0f)),
+	m_swordPos(VGet(0.0f, 0.0f, 0.0f)),
 	m_currentAnimNo(-1),
 	m_prevAnimNo(-1),
 	m_animBlendRate(0.0f),
 	m_animSpeed(0.0f),
 	m_angle(kInitAngle),
-	m_modelRadius(4.0f),
-	m_radius(6.0f),
-	m_attackRadius(5.0f),
+	m_modelRadius(kModelRadius),
+	m_skillRadius(8.0f),
+	m_radius(kRadiusRadius),
+	m_attackRadius(kAttackRadius),
 	m_analogX(0.0f),
 	m_analogZ(0.0f),
 	m_runFrame(0),
@@ -73,13 +89,24 @@ Player::Player() :
 	m_isIdle(false),
 	m_isFloor(false),
 	m_isDeath(false),
+	m_isSkill(false),
 	m_isEnemyUnderAttack(false),
 	m_isBossUnderAttack(false),
+	m_isSkillEnemyUnderAttack(false),
+	m_isSkillBossUnderAttack(false),
 	m_isDamage(false),
 	m_moveFlag(false),
 	m_hitFlag(false),
 	m_kabeNum(0),
-	m_yukaNum(0)
+	m_yukaNum(0),
+	m_effectDuration(0.0f),
+	m_cooldownTime(0.0f),
+	m_currentCooldown(0.0f),
+	m_isOnCooldown(false),
+	m_skillAttackHit(false), // フラグを初期化
+	m_attackHit(false),
+	m_isStopEnd(false),
+	m_currentAttackAnimIndex(kAttackAnim1Index)
 {
 	// 各ステートに対応するアニメーションの再生速度を設定
 	m_animSpeedMap[State::kIdle] = 1.0f;
@@ -89,6 +116,9 @@ Player::Player() :
 	m_animSpeedMap[State::kAttack] = 1.5f;
 	m_animSpeedMap[State::kDamage] = 1.0f;
 	m_animSpeedMap[State::kDeath] = 0.8f;
+
+	m_pSkill = std::make_shared<Skill>();
+
 }
 
 Player::~Player()
@@ -98,12 +128,15 @@ Player::~Player()
 void Player::Load()
 {
 	m_modelHandle = MV1LoadModel(kModelFilename);
+	m_modelHandle1 = MV1LoadModel(kModelFilename1);
 	m_handle = LoadGraph("data/image/GameUI.png");
 }
 
 void Player::Delete()
 {
 	MV1DeleteModel(m_modelHandle);
+
+
 }
 
 void Player::Init()
@@ -120,10 +153,15 @@ void Player::Init()
 	//プレイヤーの初期位置設定
 	m_pos = VGet(0.0f, 5.0f, -20.0f);
 	m_move = VGet(0.0f, 0.0f, 0.0f);
+	m_attackPos = VGet(0.0f, 0.0f, 0.0f);
+	m_handPos = VGet(0.0f, 0.0f, 0.0f);
+	m_swordPos = VGet(0.0f, 0.0f, 0.0f);
 
 
 	MV1SetScale(m_modelHandle, VGet(kExpansion, kExpansion, kExpansion));
+	MV1SetScale(m_modelHandle1, VGet(kExpansion, kExpansion, kExpansion));
 
+	m_pSkill->Init(); // 追加
 }
 
 void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, Stage& stage)
@@ -156,6 +194,11 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 
 	m_prevPos = m_pos;
 
+	m_attackPos = MV1GetFramePosition(m_modelHandle1, 0);
+	m_handPos = MV1GetFramePosition(m_modelHandle, 120);
+
+	m_swordPos = m_handPos;
+
 	//移動処理
 	if(!m_isDamage && (m_nowState == State::kIdle) || (m_nowState == State::kWalk) || (m_nowState == State::kRun))
 	{ 
@@ -167,9 +210,16 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 		m_isMove = false;
 	}
 
+	// 攻撃中に移動入力があった場合、攻撃をキャンセルする
+	if (m_isAttack && (Pad::IsPress(PAD_INPUT_LEFT) || Pad::IsPress(PAD_INPUT_RIGHT) || Pad::IsPress(PAD_INPUT_UP) || Pad::IsPress(PAD_INPUT_DOWN)))
+	{
+		m_isAttack = false;
+		m_nowState = State::kIdle;
+		ChangeAnim(kIdleAnimIndex);
+	}
 
 	//Jump
-	if ((m_nowState != State::kJump) && (m_nowState != State::kDeath))
+	if ((m_nowState != State::kJump) && (m_nowState != State::kDeath) && (m_nowState != State::kAttack))
 	{
 		if (Pad::IsPress(PAD_INPUT_1))
 		{
@@ -178,7 +228,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 	}
 	
 	//Attack
-	if ((m_nowState != State::kAttack) && (m_nowState != State::kDamage))
+	if ((m_nowState != State::kAttack) && (m_nowState != State::kDamage) && m_move.y == 0)
 	{
 		if (Pad::IsPress(PAD_INPUT_3))
 		{
@@ -188,7 +238,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 
 
 	// ダッシュアニメーションの制御
-	if (Pad::IsPress(PAD_INPUT_2) && m_move.y == 0)
+	if (Pad::IsPress(PAD_INPUT_9) && m_move.y == 0)
 	{
 		m_runFrame++;
 		if (m_runFrame > 5)
@@ -196,7 +246,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 			m_isRun = true;
 
 			//動くスピード
-			m_move = VScale(m_move, 1.5f);
+			m_move = VScale(m_move, 2.0f);
 
 		}
 	}
@@ -206,6 +256,46 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 		m_runFrame = 0;
 	}
 
+	// スキルの発動とクールタイムの管理
+	if (Pad::IsPress(PAD_INPUT_2) && !m_isOnCooldown)
+	{
+		ActivateSkill();
+	}
+
+	// スキルの効果時間とクールタイムの更新
+	UpdateSkillCooldown();
+
+	// スキルアニメーションの更新
+	if (m_isSkill)
+	{
+		m_pSkill->Update(*this);
+
+		m_modelRadius = m_pSkill->GetRadius();
+
+		if (m_isAttack)
+		{
+			// スキルの当たり判定
+			if (IsSkillAttackColliding(m_pEnemy))
+			{
+				m_isSkillEnemyUnderAttack = true;
+			}
+			if (IsSkillBossAttackColliding(m_pBossEnemy))
+			{
+				m_isSkillBossUnderAttack = true;
+			}
+
+		}
+		else
+		{
+			m_skillAttackHit = false;
+			m_isSkillEnemyUnderAttack = false;
+			m_isSkillBossUnderAttack = false;
+		}
+	}
+	else
+	{
+		m_modelRadius = kModelRadius;
+	}
 
 	/*現在のアニメーション*/
 	if (m_nowState == State::kIdle) { IdleAnim(); }		//待機
@@ -240,12 +330,19 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 		{
 			m_isBossUnderAttack = true;
 		}
+
+		// ダメージを受けた際の移動量を制限
+		m_move = VScale(m_move, 0.0f);
+
+
 	}
 	else
 	{
+		m_attackHit = false;
 		m_isEnemyUnderAttack = false;
 		m_isBossUnderAttack = false;
 	}
+
 
 
 
@@ -260,12 +357,30 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 
 	MV1SetPosition(m_modelHandle, m_pos);
 	MV1SetRotationXYZ(m_modelHandle, VGet(0, m_angle, 0));
+
+	// 剣のモデルの位置と回転を設定
+	m_swordPos = MV1GetFramePosition(m_modelHandle, 120); // プレイヤーの手の位置に固定
+	MATRIX handMatrix = MV1GetFrameLocalMatrix(m_modelHandle, 120); // 手のローカルマトリックスを取得
+
+	// 剣の位置を設定
+	MV1SetPosition(m_modelHandle1, m_swordPos);
+	// 剣の回転を手の回転に合わせる
+	VECTOR handRotation = GetRotationFromMatrix(handMatrix);
+	MV1SetRotationXYZ(m_modelHandle1, VGet(handRotation.x, m_angle, handRotation.z)); // 手の回転を適用し、y軸はプレイヤーの向きに合わせる
+
+
 }
 
 void Player::Draw()
 {
-	MV1DrawModel(m_modelHandle);
 
+	MV1DrawModel(m_modelHandle);
+	MV1DrawModel(m_modelHandle1);
+
+	if (m_isSkill) // スキルがアクティブな場合に m_handle2 を描画
+	{
+		m_pSkill->Draw(); // 追加
+	}
 
 #ifdef _DEBUG
 
@@ -275,7 +390,7 @@ void Player::Draw()
 	//当たり判定カプセル
 	DrawCapsule3D(VGet(m_pos.x, m_pos.y + upperPart, m_pos.z), VGet(m_pos.x, m_pos.y + bottom, m_pos.z), m_modelRadius, 8, m_color, m_color, false);
 
-	DrawSphere3D(VAdd(m_attackPos, VGet(0, 10, 0)), m_attackRadius, 8, 0xffffff, 0xffffff, false);
+	DrawCapsule3D(m_attackPos, m_handPos, m_attackRadius, 8, 0xffffff, 0xffffff, false);
 
 #endif // _DEBUG
 
@@ -306,6 +421,7 @@ bool Player::UpdateAnim(int attachNo)
 		}
 		isLoop = true;
 		m_isAttack = false;
+		m_attackHit = false;
 		m_isDamage = false;
 	}
 
@@ -338,8 +454,56 @@ void Player::ChangeAnim(int animIndex)
 	MV1SetAttachAnimBlendRate(m_modelHandle, m_currentAnimNo, m_animBlendRate);
 
 	// 現在のステートに応じたアニメーションの再生速度を設定
-	m_animSpeed = m_animSpeedMap[m_nowState];
+	if (animIndex == kAttackAnim1Index || animIndex == kAttackAnim2Index || animIndex == kAttackAnim3Index)
+	{
+		m_animSpeed = GetAttackAnimSpeed(animIndex);
+	}
+	else
+	{
+		m_animSpeed = m_animSpeedMap[m_nowState];
+	}
+}
 
+float Player::GetAttackAnimSpeed(int animIndex)
+{
+	if (!m_isSkill)
+	{
+		switch (animIndex)
+		{
+		case kAttackAnim1Index:
+			return 1.8f; // 攻撃1の再生速度
+		case kAttackAnim2Index:
+			return 1.8f; // 攻撃2の再生速度
+		case kAttackAnim3Index:
+			return 1.8f; // 攻撃3の再生速度
+		default:
+			return 1.8f; // デフォルトの再生速度
+		}
+	}
+	else
+	{
+		switch (animIndex)
+		{
+		case kAttackAnim1Index:
+			return 1.5f; // 攻撃1の再生速度
+		case kAttackAnim2Index:
+			return 1.2f; // 攻撃2の再生速度
+		case kAttackAnim3Index:
+			return 1.8f; // 攻撃3の再生速度
+		default:
+			return 1.5f; // デフォルトの再生速度
+		}
+	}
+
+}
+
+VECTOR Player::GetRotationFromMatrix(const MATRIX& matrix)
+{
+	VECTOR rotation;
+	rotation.x = atan2f(matrix.m[1][2], matrix.m[2][2]);
+	rotation.y = atan2f(-matrix.m[0][2], sqrtf(matrix.m[1][2] * matrix.m[1][2] + matrix.m[2][2] * matrix.m[2][2]));
+	rotation.z = atan2f(matrix.m[0][1], matrix.m[0][0]);
+	return rotation;
 }
 
 Player::State Player::isGetState()
@@ -437,9 +601,6 @@ void Player::Move()
 		m_attackDir = VNorm(move);
 	}
 
-	VECTOR attackMove = VScale(m_attackDir, 8.0f);
-	m_attackPos = VAdd(m_pos, attackMove);
-
 }
 
 void Player::Jump()
@@ -449,7 +610,11 @@ void Player::Jump()
 	{
 		m_move = VScale(m_move, 2.0f);
 	}
-	m_move.y = 4.0f;
+	else
+	{
+		move = VScale(move, kMaxSpeed);
+	}
+	m_move.y = 3.0f;
 	
 }
 
@@ -513,10 +678,24 @@ void Player::AttackAnim()
 	//前のステートAttackじゃないなら、アニメーション切り替え
 	if (m_backState != State::kAttack)
 	{
-		ChangeAnim(kAttackAnimIndex);
+		ChangeAnim(m_currentAttackAnimIndex);
 		m_isStopEnd = true;
+
+		// 次の攻撃アニメーションに切り替える
+		if (m_currentAttackAnimIndex == kAttackAnim1Index)
+		{
+			m_currentAttackAnimIndex = kAttackAnim2Index;
+		}
+		else if (m_currentAttackAnimIndex == kAttackAnim2Index)
+		{
+			m_currentAttackAnimIndex = kAttackAnim3Index;
+		}
+		else
+		{
+			m_currentAttackAnimIndex = kAttackAnim1Index;
+		}
 	}
-	m_animIndex = kAttackAnimIndex;
+	m_animIndex = m_currentAttackAnimIndex;
 	m_backState = State::kAttack;
 }
 
@@ -547,11 +726,11 @@ void Player::DeathAnim()
 
 }
 
-
 /*当たり判定*/
 //カプセル同士の当たり判定
 bool Player::IsEnemyCapsuleColliding(std::shared_ptr<Enemy> m_pEnemy)
 {
+
 	// プレイヤーと敵のカプセルの端点を計算
 	m_topA = { m_pos.x, m_pos.y + upperPart, m_pos.z };
 	m_bottomA = { m_pos.x, m_pos.y + bottom, m_pos.z };
@@ -691,66 +870,233 @@ bool Player::IsBossEnemyCapsuleColliding(std::shared_ptr<BossEnemy> m_pBossEnemy
 //攻撃の当たり判定
 bool Player::IsAttackColliding(std::shared_ptr<Enemy> m_pEnemy)
 {
-	float delX = (m_attackPos.x - m_pEnemy->GetPos().x) * (m_attackPos.x - m_pEnemy->GetPos().x);
-	float delY = (m_attackPos.y - m_pEnemy->GetPos().y + (upperPart / 2)) * (m_attackPos.y - m_pEnemy->GetPos().y + (upperPart / 2));
-	float delZ = (m_attackPos.z - m_pEnemy->GetPos().z) * (m_attackPos.z - m_pEnemy->GetPos().z);
+	// プレイヤーと敵のカプセルの端点を計算
+	VECTOR topA = m_attackPos;
+	VECTOR bottomA = m_handPos;
+	VECTOR topB = { m_pEnemy->GetPos().x, m_pEnemy->GetPos().y + upperPart, m_pEnemy->GetPos().z };
+	VECTOR bottomB = { m_pEnemy->GetPos().x, m_pEnemy->GetPos().y + bottom, m_pEnemy->GetPos().z };
 
-	//球と球の距離
-	float Distance = sqrt(delX + delY + delZ);
+	// カプセルの中心点
+	VECTOR centerA = { (bottomA.x + topA.x) / 2, (bottomA.y + topA.y) / 2, (bottomA.z + topA.z) / 2 };
+	VECTOR centerB = { (bottomB.x + topB.x) / 2, (bottomB.y + topB.y) / 2, (bottomB.z + topB.z) / 2 };
 
-	//球と球の距離が剣とエネミーの半径よりも小さい場合
-	if (Distance < m_radius + m_pEnemy->GetRadius())
-	{
+	// 各カプセルの端点間の最短距離を計算する
+	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2) {
+		// 直線の距離の最短を求める
+		// ここで、2つの線分の最短距離を計算します
+		VECTOR dir1 = { top1.x - bottom1.x, top1.y - bottom1.y, top1.z - bottom1.z };
+		VECTOR dir2 = { top2.x - bottom2.x, top2.y - bottom2.y, top2.z - bottom2.z };
+		VECTOR diff = { bottom1.x - bottom2.x, bottom1.y - bottom2.y, bottom1.z - bottom2.z };
 
-		return true;
+		float a = dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z;
+		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
+		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
+		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + diff.z * diff.z;
+
+		float det = a * c - b * b;
+		if (det == 0.0f) {
+			return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		}
+
+		float s = (b * e - c * d) / det;
+		float t = (a * e - b * d) / det;
+
+		if (s < 0.0f) s = 0.0f;
+		else if (s > 1.0f) s = 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		else if (t > 1.0f) t = 1.0f;
+
+		VECTOR closestA = { bottom1.x + s * dir1.x, bottom1.y + s * dir1.y, bottom1.z + s * dir1.z };
+		VECTOR closestB = { bottom2.x + t * dir2.x, bottom2.y + t * dir2.y, bottom2.z + t * dir2.z };
+
+		VECTOR delta = { closestA.x - closestB.x, closestA.y - closestB.y, closestA.z - closestB.z };
+		return std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		};
+
+	// プレイヤーのカプセルと敵のカプセルの端点間の最短距離を計算
+	float distance = capsuleSegmentDistance(bottomA, topA, bottomB, topB);
+
+	// 衝突判定
+	if (distance < m_radius + m_pEnemy->GetRadius()) {
+		return true; // 衝突が発生した
 	}
 
-	return false;
+	return false; // 衝突は発生していない
 }
 
 bool Player::IsBossAttackColliding(std::shared_ptr<BossEnemy> m_pBossEnemy)
 {
 
-	float delX = (m_attackPos.x - m_pBossEnemy->GetPos().x) * (m_attackPos.x - m_pBossEnemy->GetPos().x);
-	float delY = (m_attackPos.y - m_pBossEnemy->GetPos().y + (upperPart / 2)) * (m_attackPos.y - m_pBossEnemy->GetPos().y + (upperPart / 2));
-	float delZ = (m_attackPos.z - m_pBossEnemy->GetPos().z) * (m_attackPos.z - m_pBossEnemy->GetPos().z);
+	// プレイヤーと敵のカプセルの端点を計算
+	VECTOR topA = m_attackPos;
+	VECTOR bottomA = m_handPos;
+	VECTOR topB = { m_pBossEnemy->GetPos().x, m_pBossEnemy->GetPos().y + upperPart, m_pBossEnemy->GetPos().z };
+	VECTOR bottomB = { m_pBossEnemy->GetPos().x, m_pBossEnemy->GetPos().y + bottom, m_pBossEnemy->GetPos().z };
 
-	//球と球の距離
-	float Distance = sqrt(delX + delY + delZ);
+	// カプセルの中心点
+	VECTOR centerA = { (bottomA.x + topA.x) / 2, (bottomA.y + topA.y) / 2, (bottomA.z + topA.z) / 2 };
+	VECTOR centerB = { (bottomB.x + topB.x) / 2, (bottomB.y + topB.y) / 2, (bottomB.z + topB.z) / 2 };
 
-	//球と球の距離が剣とエネミーの半径よりも小さい場合
-	if (Distance < m_radius + m_pBossEnemy->GetRadius())
-	{
+	// 各カプセルの端点間の最短距離を計算する
+	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2) {
+		// 直線の距離の最短を求める
+		// ここで、2つの線分の最短距離を計算します
+		VECTOR dir1 = { top1.x - bottom1.x, top1.y - bottom1.y, top1.z - bottom1.z };
+		VECTOR dir2 = { top2.x - bottom2.x, top2.y - bottom2.y, top2.z - bottom2.z };
+		VECTOR diff = { bottom1.x - bottom2.x, bottom1.y - bottom2.y, bottom1.z - bottom2.z };
 
-		return true;
+		float a = dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z;
+		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
+		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
+		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + dir2.z * diff.z;
+
+		float det = a * c - b * b;
+		if (det == 0.0f) {
+			return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		}
+
+		float s = (b * e - c * d) / det;
+		float t = (a * e - b * d) / det;
+
+		if (s < 0.0f) s = 0.0f;
+		else if (s > 1.0f) s = 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		else if (t > 1.0f) t = 1.0f;
+
+		VECTOR closestA = { bottom1.x + s * dir1.x, bottom1.y + s * dir1.y, bottom1.z + s * dir1.z };
+		VECTOR closestB = { bottom2.x + t * dir2.x, bottom2.y + t * dir2.y, bottom2.z + t * dir2.z };
+
+		VECTOR delta = { closestA.x - closestB.x, closestA.y - closestB.y, closestA.z - closestB.z };
+		return std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		};
+
+	// プレイヤーのカプセルとボスのカプセルの端点間の最短距離を計算
+	float distance = capsuleSegmentDistance(bottomA, topA, bottomB, topB);
+
+	// 衝突判定
+	if (distance < m_pSkill->GetRadius() + m_pBossEnemy->GetRadius()) {
+		return true; // 衝突が発生した
 	}
 
-	return false;
-
+	return false; // 衝突は発生していない
 }
 
-
-//踏み攻撃の当たり判定
-bool Player::IsStepOnAttockColliding(std::shared_ptr<Enemy> m_pEnemy)
+bool Player::IsSkillAttackColliding(std::shared_ptr<Enemy> m_pEnemy)
 {
-	float delX = (m_pos.x - m_pEnemy->GetPos().x) * (m_pos.x - m_pEnemy->GetPos().x);
-	float delY = ((m_pos.y + bottom) - (m_pEnemy->GetPos().y + upperPart)) * ((m_pos.y + bottom) - (m_pEnemy->GetPos().y + upperPart));
-	float delZ = (m_pos.z - m_pEnemy->GetPos().z) * (m_pos.z - m_pEnemy->GetPos().z);
+	// プレイヤーと敵のカプセルの端点を計算
+	VECTOR topA = m_pSkill->GetHandPos();
+	VECTOR bottomA = m_pSkill->GetAttackPos();
+	VECTOR topB = { m_pEnemy->GetPos().x, m_pEnemy->GetPos().y + upperPart, m_pEnemy->GetPos().z };
+	VECTOR bottomB = { m_pEnemy->GetPos().x, m_pEnemy->GetPos().y + bottom, m_pEnemy->GetPos().z };
 
-	//球と球の距離
-	float Distance = sqrt(delX + delY + delZ);
+	// カプセルの中心点
+	VECTOR centerA = { (bottomA.x + topA.x) / 2, (bottomA.y + topA.y) / 2, (bottomA.z + topA.z) / 2 };
+	VECTOR centerB = { (bottomB.x + topB.x) / 2, (bottomB.y + topB.y) / 2, (bottomB.z + topB.z) / 2 };
 
-	//球と球の距離が剣とエネミーの半径よりも小さい場合
-	if (Distance < m_radius + m_pEnemy->GetRadius())
-	{
+	// 各カプセルの端点間の最短距離を計算する
+	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2) {
+		// 直線の距離の最短を求める
+		// ここで、2つの線分の最短距離を計算します
+		VECTOR dir1 = { top1.x - bottom1.x, top1.y - bottom1.y, top1.z - bottom1.z };
+		VECTOR dir2 = { top2.x - bottom2.x, top2.y - bottom2.y, top2.z - bottom2.z };
+		VECTOR diff = { bottom1.x - bottom2.x, bottom1.y - bottom2.y, bottom1.z - bottom2.z };
 
-		return true;
+		float a = dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z;
+		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
+		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
+		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + diff.z * diff.z;
+
+		float det = a * c - b * b;
+		if (det == 0.0f) {
+			return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		}
+
+		float s = (b * e - c * d) / det;
+		float t = (a * e - b * d) / det;
+
+		if (s < 0.0f) s = 0.0f;
+		else if (s > 1.0f) s = 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		else if (t > 1.0f) t = 1.0f;
+
+		VECTOR closestA = { bottom1.x + s * dir1.x, bottom1.y + s * dir1.y, bottom1.z + s * dir1.z };
+		VECTOR closestB = { bottom2.x + t * dir2.x, bottom2.y + t * dir2.y, bottom2.z + t * dir2.z };
+
+		VECTOR delta = { closestA.x - closestB.x, closestA.y - closestB.y, closestA.z - closestB.z };
+		return std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		};
+
+	// プレイヤーのカプセルと敵のカプセルの端点間の最短距離を計算
+	float distance = capsuleSegmentDistance(bottomA, topA, bottomB, topB);
+
+	// 衝突判定
+	if (distance < m_pSkill->GetRadius() + m_pEnemy->GetRadius()) {
+		return true; // 衝突が発生した
 	}
 
-	return false;
+	return false; // 衝突は発生していない
 }
 
 
+bool Player::IsSkillBossAttackColliding(std::shared_ptr<BossEnemy> m_pBossEnemy)
+{
+	// プレイヤーとボスのカプセルの端点を計算
+	VECTOR topA = m_pSkill->GetHandPos();
+	VECTOR bottomA = m_pSkill->GetAttackPos();
+	VECTOR topB = { m_pBossEnemy->GetPos().x, m_pBossEnemy->GetPos().y + upperPart, m_pBossEnemy->GetPos().z };
+	VECTOR bottomB = { m_pBossEnemy->GetPos().x, m_pBossEnemy->GetPos().y + bottom, m_pBossEnemy->GetPos().z };
+
+	// カプセルの中心点
+	VECTOR centerA = { (bottomA.x + topA.x) / 2, (bottomA.y + topA.y) / 2, (bottomA.z + topA.z) / 2 };
+	VECTOR centerB = { (bottomB.x + topB.x) / 2, (bottomB.y + topB.y) / 2, (bottomB.z + topB.z) / 2 };
+
+	// 各カプセルの端点間の最短距離を計算する
+	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2) {
+		// 直線の距離の最短を求める
+		// ここで、2つの線分の最短距離を計算します
+		VECTOR dir1 = { top1.x - bottom1.x, top1.y - bottom1.y, top1.z - bottom1.z };
+		VECTOR dir2 = { top2.x - bottom2.x, top2.y - bottom2.y, top2.z - bottom2.z };
+		VECTOR diff = { bottom1.x - bottom2.x, bottom1.y - bottom2.y, bottom1.z - bottom2.z };
+
+		float a = dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z;
+		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
+		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
+		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + dir2.z * diff.z;
+
+		float det = a * c - b * b;
+		if (det == 0.0f) {
+			return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		}
+
+		float s = (b * e - c * d) / det;
+		float t = (a * e - b * d) / det;
+
+		if (s < 0.0f) s = 0.0f;
+		else if (s > 1.0f) s = 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		else if (t > 1.0f) t = 1.0f;
+
+		VECTOR closestA = { bottom1.x + s * dir1.x, bottom1.y + s * dir1.y, bottom1.z + s * dir1.z };
+		VECTOR closestB = { bottom2.x + t * dir2.x, bottom2.y + t * dir2.y, bottom2.z + t * dir2.z };
+
+		VECTOR delta = { closestA.x - closestB.x, closestA.y - closestB.y, closestA.z - closestB.z };
+		return std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		};
+
+	// プレイヤーのカプセルとボスのカプセルの端点間の最短距離を計算
+	float distance = capsuleSegmentDistance(bottomA, topA, bottomB, topB);
+
+	// 衝突判定
+	if (distance < m_pSkill->GetRadius() + m_pBossEnemy->GetRadius()) {
+		return true; // 衝突が発生した
+	}
+
+	return false; // 衝突は発生していない
+}
 void Player::CorrectPosition(Stage& stage)
 {
 	int j;
@@ -1002,4 +1348,41 @@ void Player::CorrectPosition(Stage& stage)
 
 	//検出したプレイヤーの周囲のポリゴン情報を開放する
 	MV1CollResultPolyDimTerminate(HitDim);
+}
+
+void Player::ActivateSkill()
+{
+	// スキルがクールダウン中でない場合にスキルを発動
+	if (!m_isOnCooldown)
+	{
+		m_isSkill = true;
+		m_effectDuration = 10.0f; // スキルの効果時間を5秒に設定
+		m_cooldownTime = 50.0f; // クールタイムを10秒に設定
+		m_currentCooldown = m_cooldownTime;
+		m_isOnCooldown = true;
+	}
+}
+
+void Player::UpdateSkillCooldown()
+{
+	// スキルが発動中の場合、効果時間を減少させる
+	if (m_isSkill)
+	{
+		m_effectDuration -= 1.0f / 60.0f; // 1フレームごとに効果時間を減少させる（60FPSの場合）
+		if (m_effectDuration <= 0.0f)
+		{
+			m_isSkill = false;
+			m_effectDuration = 0.0f; // 効果時間を0にリセット
+		}
+	}
+	else if (m_isOnCooldown)
+	{
+		// スキルの効果時間が0になってからクールダウン時間を減少させる
+		m_currentCooldown -= 1.0f / 60.0f; // 1フレームごとにクールダウン時間を減少させる（60FPSの場合）
+		if (m_currentCooldown <= 0.0f)
+		{
+			m_isOnCooldown = false;
+			m_currentCooldown = 0.0f; // クールダウン時間を0にリセット
+		}
+	}
 }

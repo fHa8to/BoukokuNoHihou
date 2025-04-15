@@ -3,7 +3,7 @@
 #include <memory>
 #include <unordered_map>
 
-#define PLAYER_MAX_HITCOLL 21836 //処理するコリジョンポリゴンの最大数
+#define PLAYER_MAX_HITCOLL 21884 //処理するコリジョンポリゴンの最大数
 
 #define ENEMY_NOW 5  //敵の配列で出す数
 
@@ -70,6 +70,9 @@ public:
 	//ダメージのフラグ取得
 	void SetDamage(const bool damage) { m_isDamage = damage; }
 
+	bool IsAttackHit() const { return m_attackHit; }
+	void SetAttackHit(bool hit) { m_attackHit = hit; }
+
 
 private:
 	//アニメーションの進行
@@ -77,11 +80,14 @@ private:
 	bool UpdateAnim(int attachNo);
 	void ChangeAnim(int animIndex);
 
+	VECTOR GetRotationFromMatrix(const MATRIX& matrix);
+
 	std::unordered_map<State, float> m_animSpeedMap; // 各ステートに対応するアニメーションの再生速度
 
 private:
 	//モデルハンドル
 	int m_modelHandle;
+	int m_modelHandle1;
 
 	//アニメーション情報
 	int m_animIndex;
@@ -99,6 +105,8 @@ private:
 	VECTOR m_playerPos;
 	VECTOR m_direction;
 	VECTOR m_mapHitColl;    //キャラクターのマップとの当たり判定
+	VECTOR m_handPos;
+	VECTOR m_swordPos;
 
 
 	//進む距離
@@ -137,6 +145,8 @@ private:
 
 	//HP
 	int m_hp;
+
+	bool m_attackHit; // スキル攻撃が当たったかどうかを管理するフラグ
 
 	bool m_moveFlag;
 	bool m_hitFlag;

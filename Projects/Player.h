@@ -5,19 +5,13 @@
 #include <cmath>
 #include <unordered_map>
 
-//#define PLAYER_MAX_HITCOLL 21836 //処理するコリジョンポリゴンの最大数
-
-//// 最大ＨＰ
-//#define PLAYER_HP_MAX		25
-//// ＨＰ１でどれだけバーを伸ばすか
-//#define PLAYER_DRAW_SIZE	20
-
 
 
 class Enemy;
 class BossEnemy;
 class Stage;
 class Ui;
+class Skill;
 
 
 class Player
@@ -42,35 +36,58 @@ public:
 	//プレイヤーの座標を取得
 	const VECTOR& GetPrevPos() const { return m_prevPos; }
 
+	const float& GetAngle() const { return m_angle; }
 
 	//攻撃の取得
 	const bool& GetUnderAttack() const { return m_isEnemyUnderAttack; }
 	//攻撃の取得
 	const bool& GetUnderBossAttack() const { return m_isBossUnderAttack; }
+	//攻撃の取得
+	const bool& GetSkillUnderAttack() const { return m_isSkillEnemyUnderAttack; }
+	//攻撃の取得
+	const bool& GetSkillUnderBossAttack() const { return m_isSkillBossUnderAttack; }
+
+	float GetSkillEffectDuration() const { return m_effectDuration; }
+	float GetSkillCooldown() const { return m_currentCooldown; }
+	float GetSkillMaxEffectDuration() const { return 10.0f; } // スキルの最大効果時間
+	float GetSkillMaxCooldown() const { return 50.0f; } // スキルの最大クールタイム
+
+	const bool& GetIdle() const { return m_isIdle; }
 
 	const bool& GetAttack() const { return m_isAttack; }
+
+	const bool& GetSkill() const { return m_isSkill; }
+
+
+	bool IsSkillAttackHit() const { return m_skillAttackHit; }
+	void SetSkillAttackHit(bool skillhit) { m_skillAttackHit = skillhit; }
+
+	bool IsAttackHit() const { return m_attackHit; }
+	void SetAttackHit(bool hit) { m_attackHit = hit; }
+
 
 	//当たり判定の半径
 	float GetRadius() { return m_modelRadius; }
 
 
 
-	//カプセルの当たり判定
+	//カプセルの当たり判定(敵)
 	bool IsEnemyCapsuleColliding(std::shared_ptr<Enemy> m_pEnemy);
 
-
-	//カプセルの当たり判定
+	//カプセルの当たり判定(ボス)
 	bool IsBossEnemyCapsuleColliding(std::shared_ptr<BossEnemy> m_pBossEnemy);
 
 	//攻撃の当たり判定(敵)
 	bool IsAttackColliding(std::shared_ptr<Enemy> m_pEnemy);
 
-
 	//攻撃の当たり判定(ボス)
 	bool IsBossAttackColliding(std::shared_ptr<BossEnemy> m_pBossEnemy);
 
-	//踏む攻撃の当たり判定
-	bool IsStepOnAttockColliding(std::shared_ptr<Enemy> m_pEnemy);
+	//攻撃の当たり判定(スキル敵)
+	bool IsSkillAttackColliding(std::shared_ptr<Enemy> m_pEnemy);
+
+	//攻撃の当たり判定(スキルボス)
+	bool IsSkillBossAttackColliding(std::shared_ptr<BossEnemy> m_pBossEnemy);
 
 	void CorrectPosition(Stage& stage);
 
@@ -81,6 +98,8 @@ public:
 	//ダメージのフラグ取得
 	const bool& GetMove() const { return m_isMove; }
 
+	void ActivateSkill();
+	void UpdateSkillCooldown();
 
 	enum State
 	{
@@ -105,7 +124,12 @@ private:
 	bool UpdateAnim(int attachNo);
 	void ChangeAnim(int animIndex);
 
+	float GetAttackAnimSpeed(int animIndex);
+
+	VECTOR GetRotationFromMatrix(const MATRIX& matrix);
+
 	std::unordered_map<State, float> m_animSpeedMap; // 各ステートに対応するアニメーションの再生速度
+	std::shared_ptr<Skill> m_pSkill;
 
 
 	/*フラグ*/
@@ -140,10 +164,10 @@ private:
 	void DeathAnim();
 
 
-
 private:
 	//モデルハンドル
 	int m_modelHandle;
+	int m_modelHandle1;
 	int m_handle;
 
 	//アニメーション情報
@@ -156,6 +180,7 @@ private:
 	float m_angle;
 
 	float m_modelRadius;
+	float m_skillRadius;
 	float m_radius;
 	float m_attackRadius;
 
@@ -172,6 +197,8 @@ private:
 	VECTOR m_move;
 	VECTOR m_enemyPos;
 	VECTOR m_mapHitColl;    //キャラクターのマップとの当たり判定
+	VECTOR m_handPos;
+	VECTOR m_swordPos;
 
 
 	//カプセルの点
@@ -198,6 +225,8 @@ private:
 	bool m_isDamage;		//ダメージ
 	bool m_isDeath;		//死
 
+	bool m_isSkill;		//スキル
+
 	//アニメーションフラグ
 	bool m_isStopEnd;	// アニメーション最後で停止させる
 	int m_runFrame;
@@ -208,6 +237,8 @@ private:
 	//当たり判定の発生フラグ
 	bool m_isEnemyUnderAttack;
 	bool m_isBossUnderAttack;
+	bool m_isSkillEnemyUnderAttack;
+	bool m_isSkillBossUnderAttack;
 
 
 	bool m_moveFlag;
@@ -225,4 +256,15 @@ private:
 	// ダメージ処理用の変数
 	int m_damageCounter;
 	static constexpr int kDamageDuration = 60; // ダメージアニメーションのフレーム数
+
+	//スキル処理用の変数
+	float m_effectDuration; // 効果時間
+	float m_cooldownTime;  // クールタイム
+	float m_currentCooldown; // 現在のクールタイム
+	bool m_isOnCooldown; // クールタイム中かどうか
+
+	bool m_skillAttackHit; // スキル攻撃が当たったかどうかを管理するフラグ
+	bool m_attackHit; // スキル攻撃が当たったかどうかを管理するフラグ
+
+	int m_currentAttackAnimIndex; // 現在の攻撃アニメーションのインデックス
 };

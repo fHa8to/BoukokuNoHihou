@@ -15,7 +15,7 @@ Camera::Camera():
 	m_pos(VGet(0.0f,0.0f,0.0f)),
 	m_targetPos(VGet(0.0f, 0.0f, 0.0f)),
 	m_cameraAngle(VGet(0.0f, 0.0f, 0.0f)),
-	m_angle(-DX_PI_F / 2)
+	m_angle(DX_PI_F / 2)
 {
 	SetCameraNearFar(5, 1600);
 
@@ -23,7 +23,7 @@ Camera::Camera():
 
 	m_targetPos = VGet(0.0f, 0.5f, 0.0f);
 
-	m_cameraAngle = VGet(D2R(-20.0f), 0.0f, 0.0f);
+	m_cameraAngle = VGet(0.0f, 0.0f, 0.0f);
 
 }
 
@@ -43,14 +43,22 @@ void Camera::PlayerCameraUpdate(Player& player)
 	int analogZ = 0;
 
 	GetJoypadAnalogInputRight(&analogX, &analogZ, DX_INPUT_PAD1);	
-	//GetJoypadDirectInputState(DX_INPUT_PAD1, &input);
 	Pad::Update();
 
 
 
 	//カメラに位置を反映
 	//注視点の座標
-	VECTOR playerAimPos = VGet(player.GetPos().x, player.GetPos().y - 5.0f, player.GetPos().z);
+	VECTOR playerAimPos;
+	
+	if (player.GetSkill())
+	{
+		playerAimPos = VGet(player.GetPos().x, player.GetPos().y, player.GetPos().z);
+	}
+	else
+	{
+		playerAimPos = VGet(player.GetPos().x, player.GetPos().y - 8.0f, player.GetPos().z);
+	}
 	//ベクトルの方向(注視点,カメラのポジション)
 	VECTOR posToAim = VSub(playerAimPos, m_pos);
 
@@ -63,16 +71,23 @@ void Camera::PlayerCameraUpdate(Player& player)
 		m_angle += 0.05f;
 	}
 
-
-
-
-	//注視点の座標をプレイヤーの座標に代入
-	m_targetPos = VAdd(player.GetPos(), VGet(0.0f, 10.0f, 0.0f));
-
-
-	m_pos.x += cosf(m_angle) * kCameraDist;
-	m_pos.y += kCameraDist;
-	m_pos.z += sinf(m_angle) * kCameraDist;
+	// プレイヤーがスキルを使用しているかどうかをチェック
+	if (player.GetSkill())
+	{
+		// スキル使用中のカメラ位置
+		m_targetPos = VAdd(player.GetPos(), VGet(0.0f, 10.0f, 0.0f));
+		m_pos.x += cosf(m_angle) * (kCameraDist + 25); // 通常より遠い位置に設定
+		m_pos.y += (kCameraDist);
+		m_pos.z += sinf(m_angle) * (kCameraDist + 25);
+	}
+	else
+	{
+		// 通常時のカメラ位置
+		m_targetPos = VAdd(player.GetPos(), VGet(0.0f, 10.0f, 0.0f));
+		m_pos.x += cosf(m_angle) * kCameraDist;
+		m_pos.y += kCameraDist;
+		m_pos.z += sinf(m_angle) * kCameraDist;
+	}
 
 	//現在位置にポジションを足す
 	m_pos = VAdd(m_pos, posToAim);

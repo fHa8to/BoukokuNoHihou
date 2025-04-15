@@ -2,11 +2,12 @@
 #include "DxLib.h"
 #include "Player.h"
 
+#define D2R(deg) ((deg)* DX_PI_F/180.0f)
+
 namespace
 {
 	//モデルのファイル名
-	const char* const kModelFilename1 = "data/model/stage/stage.mv1";
-	const char* const kModelFilename2 = "data/model/stage/stage1.mv1";
+	const char* const kModelFilename = "data/model/stage/stage.mv1";
 
 	//モデルのサイズ変更
 	constexpr float kExpansion = 3.0f;
@@ -27,9 +28,10 @@ Stage::~Stage()
 
 void Stage::Init()
 {
-	m_modelHandle = MV1LoadModel(kModelFilename1);
+	m_modelHandle = MV1LoadModel(kModelFilename);
 
-	m_collisionHandle = MV1LoadModel(kModelFilename2);
+	m_collisionHandle = MV1LoadModel(kModelFilename);
+
 
 
 	//モデルのサイズ変更

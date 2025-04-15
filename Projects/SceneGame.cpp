@@ -25,6 +25,16 @@ SceneGame::SceneGame() :
     m_isBossEnemyTranslation(false),
     m_isEnemyDeath(false),
     m_isPlayerAttack(false),
+	m_isSkillPlayerAttack(false),
+	m_isEnemyHit(false),
+	m_isBossEnemyHit(false),
+	m_isSkillEnemyHit(false),
+	m_isSkillBossEnemyHit(false),
+	m_isStepOnAttock(false),
+	m_isEnemyStop(false),
+	m_isBossEnemyStop(false),
+	m_isBossAttack(false),
+	m_isSkillBossEnemyAttack(false),
     m_isEnemyAttack(false),
     m_isPlayerAttackCoolTime(false),
     m_isPlayerBossAttackCoolTime(false),
@@ -51,7 +61,7 @@ SceneGame::SceneGame() :
     m_pStage = std::make_shared<Stage>();
     m_pSkyDome = std::make_shared<SkyDome>();
     m_pUi = std::make_shared<Ui>();
-
+	m_pSkill = std::make_shared<Skill>();
 }
 
 SceneGame::~SceneGame()
@@ -111,25 +121,23 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     m_pUi->Update();
 
     //プレイヤーと敵の当たり判定
-    m_isGimmickHit = m_pPlayer->IsEnemyCapsuleColliding(m_pEnemy);
-    m_isGimmickHit1 = m_pPlayer->IsBossEnemyCapsuleColliding(m_pBossEnemy);
+    m_isEnemyHit = m_pPlayer->IsEnemyCapsuleColliding(m_pEnemy);
+    m_isBossEnemyHit = m_pPlayer->IsBossEnemyCapsuleColliding(m_pBossEnemy);
 
     //敵の索敵範囲の当たり判定
     m_isEnemyTranslation = m_pEnemy->Translation(m_pPlayer);
 
     //プレイヤー攻撃範囲の当たり判定
     m_isPlayerAttack = m_pPlayer->IsAttackColliding(m_pEnemy);
-
-    //プレイヤー攻撃範囲の当たり判定
     m_isBossEnemyAttack = m_pPlayer->IsBossAttackColliding(m_pBossEnemy);
+	//プレイヤーのスキル攻撃範囲の当たり判定
+    m_isSkillPlayerAttack = m_pPlayer->IsSkillAttackColliding(m_pEnemy);
+    m_isSkillBossEnemyAttack = m_pPlayer->IsSkillBossAttackColliding(m_pBossEnemy);
 
     //敵の攻撃範囲の当たり判定
     m_isEnemyAttack = m_pEnemy->IsAttackColliding(m_pPlayer);
 
     m_isBossAttack = m_pBossEnemy->IsAttackColliding(m_pPlayer);
-
-    //踏み潰す当たり判定
-    m_isStepOnAttock = m_pPlayer->IsStepOnAttockColliding(m_pEnemy);
 
     m_isBossEnemyTranslation = m_pBossEnemy->Translation(m_pPlayer);
 
@@ -189,112 +197,116 @@ std::shared_ptr<SceneBase> SceneGame::Update()
         }
     }
 
-    //プレイヤーの攻撃がボスに当たっている時
-    if (m_pPlayer->GetUnderBossAttack())
+    if (m_pPlayer->GetSkill())
     {
-        if (!m_isPlayerBossAttackCoolTime)
+
+        m_pPlayer->SetAttackHit(false);
+
+        //プレイヤーの攻撃がボスに当たっている時
+        if (m_pPlayer->GetSkillUnderBossAttack())
         {
-            m_playerFrame++;
-            if (m_playerFrame > 15)
+
+            if (m_isSkillBossEnemyAttack && !m_pPlayer->IsSkillAttackHit())
             {
-                if (m_isBossEnemyAttack)
+                //HPを減らす
+                bossEnemyHp -= 3;
+                m_pUi->SetBossHp(bossEnemyHp);
+                m_pPlayer->SetSkillAttackHit(true); // フラグを設定
+
+                if (m_pUi->GetBossHp() >= 1)
                 {
-                    //HPを減らす
-                    bossEnemyHp -= 1;
-                    m_pUi->SetBossHp(bossEnemyHp);
-                    m_isPlayerBossAttackCoolTime = true;
-                    if (m_pUi->GetBossHp() >= 1)
-                    {
-                        m_pBossEnemy->SetState(BossEnemy::kDamage);
-                    }
-                    m_playerFrame = 0;
+                    m_pBossEnemy->SetState(BossEnemy::kDamage);
                 }
             }
         }
-        else
-        {
-            m_bossEnemySkillHitFrame++;
-            if (m_bossEnemySkillHitFrame >= 50)
-            {
-                m_isPlayerBossAttackCoolTime = false;
-                m_bossEnemySkillHitFrame = 0;
-            }
-        }
-    }
 
-    //プレイヤーの攻撃が敵に当たっている時
-    if (m_pPlayer->GetUnderAttack())
-    {
-        if (!m_isPlayerAttackCoolTime)
+        //プレイヤーの攻撃が敵に当たっている時
+        if (m_pPlayer->GetSkillUnderAttack())
         {
-            m_playerFrame++;
-            if (m_playerFrame > 15)
-            {
-                if (m_isPlayerAttack)
+
+            if (m_isSkillPlayerAttack && !m_pPlayer->IsSkillAttackHit())
                 {
                     //HPを減らす
-                    enemyHp -= 1;
+                    enemyHp -= 3;
                     m_pEnemy->SetHp(enemyHp);
-                    m_isPlayerAttackCoolTime = true;
+                    m_pPlayer->SetSkillAttackHit(true); // フラグを設定
+
                     if (m_pEnemy->GetHp() >= 1)
                     {
                         m_pEnemy->SetState(Enemy::kDamage);
                     }
-                    m_playerFrame = 0;
-                }
             }
         }
-        else
-        {
-            m_playerSkillHitFrame++;
-            if (m_playerSkillHitFrame >= 50)
-            {
-                m_isPlayerAttackCoolTime = false;
-                m_playerSkillHitFrame = 0;
-            }
-        }
+        
     }
+    else
+    {
+        m_pPlayer->SetSkillAttackHit(false);
+
+        //プレイヤーの攻撃がボスに当たっている時
+        if (m_pPlayer->GetUnderBossAttack())
+        {
+                    if (m_isBossEnemyAttack && !m_pPlayer->IsAttackHit())
+                    {
+                        //HPを減らす
+                        bossEnemyHp -= 1;
+                        m_pUi->SetBossHp(bossEnemyHp);
+                        m_pPlayer->SetAttackHit(true);
+
+                        if (m_pUi->GetBossHp() >= 1)
+                        {
+                            m_pBossEnemy->SetState(BossEnemy::kDamage);
+                        }
+                    }
+        }
+
+        //プレイヤーの攻撃が敵に当たっている時
+        if (m_pPlayer->GetUnderAttack())
+        {
+                    if (m_isPlayerAttack && !m_pPlayer->IsAttackHit())
+                    {
+                        //HPを減らす
+                        enemyHp -= 1;
+                        m_pEnemy->SetHp(enemyHp);
+                        m_pPlayer->SetAttackHit(true);
+
+                        if (m_pEnemy->GetHp() >= 1)
+                        {
+                            m_pEnemy->SetState(Enemy::kDamage);
+                        }
+                    }
+        }
+
+    }
+
 
     //敵の攻撃が当たっている時
     if (m_pEnemy->GetUnderAttack())
     {
-        if (m_enemyAttackCoolTimeCounter == 0)
-        {
-            m_enemyFrame++;
-            if (m_enemyFrame > 15)
-            {
-                if (m_isEnemyAttack)
+                if (m_isEnemyAttack && !m_pEnemy->IsAttackHit())
                 {
                     playerHp -= 1;
                     m_pUi->SetPlayerHp(playerHp);
-                    m_enemyAttackCoolTimeCounter = 50; // クールタイムを設定
+
+                    m_pEnemy->SetAttackHit(true);
                     m_pPlayer->SetDamage(true);
                     m_enemyFrame = 0;
                 }
-            }
-        }
 
     }
 
     //Boss敵の攻撃が当たっている時
     if (m_pBossEnemy->GetUnderAttack())
     {
-        if (m_bossEnemyAttackCoolTimeCounter == 0)
-        {
-            m_bossEnemyFrame++;
-            if (m_bossEnemyFrame > 15)
-            {
-                if (m_isBossAttack)
+                if (m_isBossAttack && !m_pBossEnemy->IsAttackHit())
                 {
                     playerHp -= 2;
                     m_pUi->SetPlayerHp(playerHp);
-                    m_bossEnemyAttackCoolTimeCounter = 50; // クールタイムを設定
+
+                    m_pBossEnemy->SetAttackHit(true);
                     m_pPlayer->SetDamage(true);
-                    m_bossEnemyFrame = 0;
 
                 }
-            }
-        }
     }
 
 
@@ -356,6 +368,7 @@ void SceneGame::Draw()
     m_pSkyDome->Draw();
     m_pStage->Draw();
 
+
 #ifdef _DEBUG
 
     DrawGrid();
@@ -367,7 +380,7 @@ void SceneGame::Draw()
     m_pEnemy->Draw(m_pPlayer);
     m_pPlayer->Draw();
 
-    m_pUi->PlayerDraw();
+    m_pUi->PlayerDraw(*m_pPlayer);
 
     if (m_isBossEnemyTranslation)
     {
@@ -380,10 +393,10 @@ void SceneGame::Draw()
     DrawString(0, 0, "SceneGame", 0x000000);
 
 
-    if (m_isGimmickHit)
+    if (m_isEnemyHit)
     {
 
-        DrawString(0, 105, "カプセルは衝突しています。", 0xff0000);
+        DrawString(0, Game::kScreenHeight / 2 + 105, "カプセルは衝突しています。", 0xff0000);
 
         m_pPlayer->SetColor(0x00ff00);
 
@@ -391,22 +404,23 @@ void SceneGame::Draw()
     else
     {
 
-        DrawString(0, 105, "カプセルは衝突していません。", 0x00ff00);
+        DrawString(0, Game::kScreenHeight / 2 + 105, "カプセルは衝突していません。", 0x00ff00);
 
         m_pPlayer->SetColor(0xffffff);
 
     }
 
+
     if (m_isStepOnAttock)
     {
 
-        DrawString(0, 120, "踏み潰す球は衝突しています。", 0xff0000);
+        DrawString(0, Game::kScreenHeight / 2 + 120, "踏み潰す球は衝突しています。", 0xff0000);
 
     }
     else
     {
 
-        DrawString(0, 120, "踏み潰す球は衝突していません。", 0x00ff00);
+        DrawString(0, Game::kScreenHeight / 2 + 120, "踏み潰す球は衝突していません。", 0x00ff00);
 
 
     }
@@ -414,41 +428,75 @@ void SceneGame::Draw()
     if (m_isPlayerAttack)
     {
 
-        DrawString(0, 135, "攻撃の球は衝突しています。", 0xff0000);
+        DrawString(0, Game::kScreenHeight / 2 + 135, "攻撃の球は衝突しています。", 0xff0000);
 
     }
     else
     {
 
-        DrawString(0, 135, "攻撃の球は衝突していません。", 0x00ff00);
+        DrawString(0, Game::kScreenHeight / 2 + 135, "攻撃の球は衝突していません。", 0x00ff00);
 
 
     }
 
     if (m_isEnemyTranslation)
     {
-        DrawString(0, 150, "Enemy発見", 0x00ff00);
+        DrawString(0, Game::kScreenHeight / 2 + 150, "Enemy発見", 0x00ff00);
 
         m_pEnemy->SetColor(0x00ff00);
     }
     else
     {
-        DrawString(0, 150, "Enemy警戒", 0xff0000);
+        DrawString(0, Game::kScreenHeight / 2 + 150, "Enemy警戒", 0xff0000);
 
         m_pEnemy->SetColor(0xffffff);
     }
 
     if (m_isBossEnemyTranslation)
     {
-        DrawString(0, 170, "Boss発見", 0x00ff00);
+        DrawString(0, Game::kScreenHeight / 2 + 170, "Boss発見", 0x00ff00);
 
         m_pBossEnemy->SetColor(0x00ff00);
     }
     else
     {
-        DrawString(0, 170, "Boss警戒", 0xff0000);
+        DrawString(0, Game::kScreenHeight / 2 + 170, "Boss警戒", 0xff0000);
 
         m_pBossEnemy->SetColor(0xffffff);
+    }
+
+    if (m_isSkillPlayerAttack)
+    {
+
+        DrawString(0, Game::kScreenHeight / 2 + 190, "Enemyとカプセルの衝突しています。", 0xff0000);
+
+        m_pSkill->SetColor(0x00ff00);
+
+    }
+    else
+    {
+
+        DrawString(0, Game::kScreenHeight / 2 + 190, "Enemyとカプセルの衝突していません。", 0x00ff00);
+
+        m_pSkill->SetColor(0xffffff);
+
+    }
+
+    if (m_isSkillBossEnemyAttack)
+    {
+
+        DrawString(0, Game::kScreenHeight / 2 + 210, "Bossとカプセルの衝突しています。", 0xff0000);
+
+        m_pSkill->SetColor(0x00ff00);
+
+    }
+    else
+    {
+
+        DrawString(0, Game::kScreenHeight / 2 + 210, "Bossとカプセルの衝突していません。", 0x00ff00);
+
+        m_pSkill->SetColor(0xffffff);
+
     }
 
 #endif // _DEBUG
@@ -465,6 +513,7 @@ void SceneGame::Draw()
 
 void SceneGame::End()
 {
+
     m_pStage->End();
     m_pPlayer->Delete();
     m_pBossEnemy->End();
@@ -507,3 +556,4 @@ void SceneGame::DrawGrid()
         DrawStringF(dispPos.x, dispPos.y, "Z-", 0xffffff);
     }
 }
+

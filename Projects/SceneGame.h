@@ -4,12 +4,13 @@
 
 #include "Player.h"
 #include "Enemy.h"
-#include "EnemyManager.h"
 #include "BossEnemy.h"
 #include "Camera.h"
 #include "Stage.h"
 #include "SkyDome.h"
 #include "Ui.h"
+#include "Skill.h"
+#include "EnemyManager.h"
 
 class Camera;
 class Player;
@@ -18,6 +19,8 @@ class BossEnemy;
 class Stage;
 class SkyDome;
 class Ui;
+class Skill;
+class EnemyManager;
 
 class SceneGame : public SceneBase
 {
@@ -32,7 +35,6 @@ public:
 
 	void DrawGrid();
 
-	
 
 private:
 	std::shared_ptr<Enemy> m_pEnemy;
@@ -42,6 +44,7 @@ private:
 	std::shared_ptr<Stage> m_pStage;
 	std::shared_ptr<SkyDome> m_pSkyDome;
 	std::shared_ptr<Ui> m_pUi;
+	std::shared_ptr<Skill> m_pSkill;
 
 
 private:
@@ -54,15 +57,19 @@ private:
 	bool m_isSceneEnd;
 	bool m_isCommand;
 
-	//
-	bool m_isGimmickHit;
-	bool m_isGimmickHit1;
+
+	bool m_isEnemyHit;
+	bool m_isBossEnemyHit;
+	bool m_isSkillEnemyHit;
+	bool m_isSkillBossEnemyHit;
 	bool m_isEnemyTranslation;
 	bool m_isBossEnemyTranslation;
 	bool m_isEnemyDeath;
 	bool m_isPlayerAttack;
+	bool m_isSkillPlayerAttack;
 	bool m_isEnemyAttack;
 	bool m_isBossEnemyAttack;
+	bool m_isSkillBossEnemyAttack;
 	bool m_isBossAttack;
 	bool m_isStepOnAttock;
 	bool m_isEnemyStop;

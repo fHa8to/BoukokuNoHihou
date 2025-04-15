@@ -30,9 +30,8 @@ namespace
 	//モデルのサイズ変更
 	constexpr float kExpansion = 0.1f;
 
-	//アニメモーションの番号
-	//待機モーション
-	constexpr int kStandByAnimIndex = 73;
+	//アニメーション番号
+	constexpr int kIdleAnimIndex = 0;
 
 	//アニメーションの切り替えにかかるフレーム数
 	constexpr float kAnimChangeFrame = 4.0f;
@@ -59,6 +58,10 @@ SceneTitle::SceneTitle() :
 	m_bottnHandle(0),
 	m_modelHandle(MV1LoadModel("data/model/skeleton/skeleton1.mv1")),
 	m_fadeAlpha(0),
+	m_currentAnimNo(-1),
+	m_prevAnimNo(-1),
+	m_animBlendRate(0.0f),
+	m_animSpeed(0.0f),
 	m_isSceneEnd(false),
 	m_pos(VGet(0.0f, 0.0f, 0.0f)),
 	m_cameraPos(VGet(0.0f, 0.0f, 0.0f)),
@@ -68,7 +71,7 @@ SceneTitle::SceneTitle() :
 	m_pStage = std::make_shared<Stage>();
 	m_pUi = std::make_shared<Ui>();
 
-	m_pos = VGet(-121.0f, 170.0f, -137.0f);
+	m_pos = VGet(-121.0f, 120.0f, -137.0f);
 	m_move = VGet(0.0f, 0.0f, 0.0f);
 
 	// 描画する文字列のサイズを設定
@@ -84,6 +87,11 @@ void SceneTitle::Init()
 {
 	m_pStage->Init();
 
+	//待機アニメーションを設定
+	m_currentAnimNo = MV1AttachAnim(m_modelHandle, kIdleAnimIndex, -1, false);
+	m_prevAnimNo = -1;
+	m_animBlendRate = 1.0f;
+
 
 	m_bottnHandle = LoadGraph("data/image/GameBottn1.png");
 
@@ -93,27 +101,27 @@ void SceneTitle::Init()
 
 	//移動する座標
 	PointPos[0] = VGet(0.0f, 0.0f + kCameraPosY, 100.0f);
-	PointPos[1] = VGet(36.0f, 0.0f + kCameraPosY, -175.0f);
-	PointPos[2] = VGet(42.0f, 57.0f + kCameraPosY, -229.0f);
-	PointPos[3] = VGet(44.0f, 57.0f + kCameraPosY, -251.0f);
-	PointPos[4] = VGet(33.0f, 57.0f + kCameraPosY, -258.0f);
-	PointPos[5] = VGet(-3.0f, 93.0f + kCameraPosY, -270.0f);
-	PointPos[6] = VGet(-35.0f, 93.0f + kCameraPosY, -262.0f);
-	PointPos[7] = VGet(-84.0f, 114.0f + kCameraPosY, -229.0f);
-	PointPos[8] = VGet(-108.0f, 114.0f + kCameraPosY, -239.0f);
-	PointPos[9] = VGet(-129.0f, 136.0f + kCameraPosY, -242.0f);
-	PointPos[10] = VGet(-166.0f, 161.0f + kCameraPosY, -219.0f);
-	PointPos[11] = VGet(-187.0f, 161.0f + kCameraPosY, -173.0f);
-	PointPos[12] = VGet(-121.0f, 165.0f + kCameraPosY, -137.0f);
-	PointPos[13] = VGet(-44.0f, 165.0f + kCameraPosY, -79.0f);
-	PointPos[14] = VGet(-10.0f, 158.0f + kCameraPosY, -9.0f);
-	PointPos[15] = VGet(-31.0f, 158.0f + kCameraPosY, 32.0f);
-	PointPos[16] = VGet(-69.0f, 211.0f + kCameraPosY, 67.0f);
-	PointPos[17] = VGet(-168.0f, 211.0f + kCameraPosY, 76.0f);
-	PointPos[18] = VGet(-205.0f, 290.0f + kCameraPosY, 17.0f);
-	PointPos[19] = VGet(-226.0f, 290.0f + kCameraPosY, -36.0f);
-	PointPos[20] = VGet(32.0f, 290.0f + kCameraPosY, -37.0f);
-	PointPos[21] = VGet(109.0f, 290.0f + kCameraPosY, -38.0f);
+	PointPos[1] = VGet(23.0f, 0.0f + kCameraPosY, -178.0f);
+	PointPos[2] = VGet(34.0f, 32.0f + kCameraPosY, -244.0f);
+	PointPos[3] = VGet(29.0f, 32.0f + kCameraPosY, -252.0f);
+	PointPos[4] = VGet(-26.0f, 51.0f + kCameraPosY, -265.0f);
+	PointPos[5] = VGet(-90.0f, 62.0f + kCameraPosY, -215.0f);
+	PointPos[6] = VGet(-121.0f, 93.0f + kCameraPosY, -242.0f);
+	PointPos[7] = VGet(-159.0f, 100.0f + kCameraPosY, -216.0f);
+	PointPos[8] = VGet(-184.0f, 100.0f + kCameraPosY, -190.0f);
+	PointPos[9] = VGet(-123.0f, 119.0f + kCameraPosY, -151.0f);
+	PointPos[10] = VGet(-50.0f, 119.0f + kCameraPosY, -59.0f);
+	PointPos[11] = VGet(-22.0f, 137.0f + kCameraPosY, -6.0f);
+	PointPos[12] = VGet(71.0f, 152.0f + kCameraPosY, 110.0f);
+	PointPos[13] = VGet(-10.0f, 166.0f + kCameraPosY, 230.0f);
+	PointPos[14] = VGet(-97.0f, 182.0f + kCameraPosY, 198.0f);
+	PointPos[15] = VGet(-138.0f, 200.0f + kCameraPosY, 174.0f);
+	PointPos[16] = VGet(-182.0f, 232.0f + kCameraPosY, 129.0f);
+	PointPos[17] = VGet(-197.0f, 232.0f + kCameraPosY, 113.0f);
+	PointPos[18] = VGet(-205.0f, 270.0f + kCameraPosY, 17.0f);
+	PointPos[19] = VGet(-226.0f, 270.0f + kCameraPosY, -36.0f);
+	PointPos[20] = VGet(32.0f, 270.0f + kCameraPosY, -37.0f);
+	PointPos[21] = VGet(109.0f, 270.0f + kCameraPosY, -38.0f);
 
 
 	m_cameraPos = PointPos[0];
@@ -170,6 +178,7 @@ std::shared_ptr<SceneBase> SceneTitle::Update()
 	{
 		return std::make_shared<SceneGame>();
 	}
+
 
 	//ポイント座標
 	VECTOR TargetPos = PointPos[TargetNumber];
@@ -291,5 +300,63 @@ void SceneTitle::End()
 	m_pStage->End();
 	m_pUi->End();
 	MV1DeleteModel(m_modelHandle);
+}
+
+bool SceneTitle::UpdateAnim(int attachNo)
+{
+	//アニメーションが設定されていないので終了
+	if (attachNo == -1) return false;
+
+	//アニメーションを進行させる
+	float now = MV1GetAttachAnimTime(m_modelHandle, attachNo);	//現在の再生カウントを取得
+	now += 0.5f * m_animSpeed; // アニメーションを再生速度に応じて進める
+
+	//現在再生中のアニメーションの総カウントを取得
+	float total = MV1GetAttachAnimTotalTime(m_modelHandle, attachNo);
+	bool isLoop = false;
+	if (now >= total)
+	{
+		if (m_isStopEnd)
+		{
+			now = total;
+		}
+		else
+		{
+			now -= total;
+		}
+		isLoop = true;
+	}
+
+	//進めた時間の設定
+	MV1SetAttachAnimTime(m_modelHandle, attachNo, now);
+
+	return isLoop;
+}
+
+void SceneTitle::ChangeAnim(int animIndex)
+{
+	//さらに古いアニメーションがアタッチされている場合はこの時点で削除しておく
+	if (m_prevAnimNo != -1)
+	{
+		MV1DetachAnim(m_modelHandle, m_prevAnimNo);
+	}
+
+	//現在再生中の待機アニメーションは変更前のアニメーション扱いに
+	m_prevAnimNo = m_currentAnimNo;
+
+	//変更後のアニメーションとして攻撃アニメーションを改めて設定する
+	m_currentAnimNo = MV1AttachAnim(m_modelHandle, animIndex, -1, false);
+
+	//切り替えの瞬間は変更後のアニメーションが再生される
+	m_animBlendRate = 0.0f;
+
+	//変更前のアニメーション100%
+	MV1SetAttachAnimBlendRate(m_modelHandle, m_prevAnimNo, 1.0f - m_animBlendRate);
+	//変更後のアニメーション0%
+	MV1SetAttachAnimBlendRate(m_modelHandle, m_currentAnimNo, m_animBlendRate);
+
+	//// 現在のステートに応じたアニメーションの再生速度を設定
+	//m_animSpeed = m_animSpeedMap[m_nowState];
+
 }
 

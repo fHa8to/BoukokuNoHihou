@@ -10,16 +10,20 @@
 
 namespace
 {
+	const char* const kModelCharacterFilename = "data/model/skeleton/skeleton1.mv1";
+	const char* const kModelWeaponFilename = "data/model/weapon/sword1.mv1";
+
 	//モデルのサイズ変更
 	constexpr float kExpansion = 0.15f;
 
 	//アニメーション番号
 	constexpr int kIdleAnimIndex = 0;
 	constexpr int kWalkAnimIndex = 1;
-	constexpr int kRnuAnimIndex = 2;
+	constexpr int kRnuAnimIndex = 1;
 	constexpr int kAttackAnimIndex = 3;
 	constexpr int kDamageAnimIndex = 4;
 	constexpr int kDeadAnimIndex = 5;
+	constexpr int kAttackAnim1Index = 6;
 
 
 	//アニメーションの切り替えにかかるフレーム数
@@ -35,27 +39,35 @@ namespace
 
 	constexpr int kAttackDelayDuration = 200; // 遅延フレーム数
 
+	constexpr int kModelRadius = 4.0f;
+	constexpr int kAttackRadius = 3.0f;
+	constexpr int kDiscoveryRadius = 80.0f;
+	constexpr int kStopRadius = 10.0f;
+
 }
 
 
 BossEnemy::BossEnemy():
-	m_modelHandle(MV1LoadModel("data/model/skeleton/skeleton1.mv1")),
+	m_modelHandle(-1),
 	m_currentAnimNo(-1),
 	m_prevAnimNo(-1),
 	m_animBlendRate(0.0f),
 	m_pos(VGet(0.0f, 0.0f, 0.0f)),
 	m_attackPos(VGet(0.0f, 0.0f, 0.0f)),
+	m_handPos(VGet(0.0f, 0.0f, 0.0f)),
 	m_angle(),
 	m_move(VGet(0.0f, 0.0f, 0.0f)),
-	m_modelRadius(4.0f),
-	m_discoveryRadius(80.0f),
-	m_attackRadius(13.0f),
-	m_stopRadius(10.0f),
+	m_modelRadius(kModelRadius),
+	m_discoveryRadius(kDiscoveryRadius),
+	m_attackRadius(kAttackRadius),
+	m_stopRadius(kStopRadius),
 	m_direction(VGet(0, 0, 0)),
 	m_isIdle(false),
 	m_isAttack(false),
+	m_isWalk(false),
 	m_isRnu(false),
 	m_isDead(false),
+	m_attackHit(false),
 	m_hp(0),
 	m_state(kIdle),
 	m_kabeNum(0),
@@ -67,7 +79,8 @@ BossEnemy::BossEnemy():
 
 	// 各ステートに対応するアニメーションの再生速度を設定
 	m_animSpeedMap[State::kIdle] = 1.0f;
-	m_animSpeedMap[State::kRun] = 1.0f;
+	m_animSpeedMap[State::kWalk] = 1.0f;
+	m_animSpeedMap[State::kRun] = 0.8f;
 	m_animSpeedMap[State::kAttack] = 1.5f;
 	m_animSpeedMap[State::kDamage] = 1.0f;
 	m_animSpeedMap[State::kDeath] = 0.8f;
@@ -81,22 +94,27 @@ BossEnemy::~BossEnemy()
 
 void BossEnemy::Init()
 {
-	m_handle = LoadGraph("data/image/GameUI1.png");
+
+	m_modelHandle = MV1LoadModel(kModelCharacterFilename);
+	m_modelHandle1 = MV1LoadModel(kModelWeaponFilename);
 
 	//待機アニメーションを設定
 	m_currentAnimNo = MV1AttachAnim(m_modelHandle, kIdleAnimIndex, -1, false);
 	m_prevAnimNo = -1;
 	m_animBlendRate = 1.0f;
 
-	m_attackPos = VGet(m_pos.x, m_pos.y, m_pos.z - 10);
+	m_attackPos = VGet(0.0f, 0.0f, 0.0f);
+	m_handPos = VGet(0.0f, 0.0f, 0.0f);
+	m_swordPos = VGet(0.0f, 0.0f, 0.0f);
 
 	m_angle = VGet(0.0f, D2R(0.0f), 0.0f);
-
 
 	m_hp = BOSS_ENEMY_HP_MAX;
 
 
 	MV1SetScale(m_modelHandle, VGet(kExpansion, kExpansion, kExpansion));
+	MV1SetScale(m_modelHandle1, VGet(kExpansion, kExpansion, kExpansion));
+
 }
 
 void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi, Stage& stage)
@@ -125,6 +143,9 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 	//座標に移動量を足す
 	m_pos = VAdd(m_pos, m_move);
 
+	m_attackPos = MV1GetFramePosition(m_modelHandle1, 0);
+	m_handPos = MV1GetFramePosition(m_modelHandle, 66);
+
 	//重力
 	m_move.y -= 0.1;
 
@@ -152,18 +173,12 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 		//攻撃の時
 		if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 		{
-			if (!m_isAttack && m_attackDelayCounter == 0)
+			if (m_attackDelayCounter == 0)
 			{
-				// 攻撃の時
-				if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
-				{
-					if (!m_isAttack)
-					{
-						ChangeAnim(kAttackAnimIndex);
-					}
+					ChangeAnim(GetRandomAttackAnimIndex());
 					m_isAttack = true;
 					m_attackDelayCounter = kAttackDelayDuration; // 攻撃遅延カウンタをリセット
-				}
+
 			}
 		}
 
@@ -185,7 +200,7 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 		}
 
 		//追いかけている
-		if (m_state == kRun)
+		if (m_state == kRun || m_state == kWalk)
 		{
 
 			//プレイヤーの座標
@@ -208,7 +223,6 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 			m_angle.y = atan2f(-SubVector.x, -SubVector.z);
 
 
-			m_attackPos = VAdd(m_pos, m_distance);
 
 			//プレイヤーの方向を向く
 			MV1SetRotationXYZ(m_modelHandle, VGet(0.0f, m_angle.y + DX_PI_F, 0.0f));
@@ -246,15 +260,20 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 		}
 	}
 
-	if (!m_isAttack)
-	{
 
-		VECTOR m_attackDir = VScale(m_direction, 50.0f);
-		m_attackPos = VAdd(m_pos, m_attackDir);
+	if (m_isAttack)
+	{
+		if (IsAttackColliding(m_pPlayer))
+		{
+			m_isUnderAttack = true;
+		}
 
 	}
-
-
+	else
+	{
+		m_attackHit = false;
+		m_isUnderAttack = false;
+	}
 
 	//HPをマイナスにさせないため
 	if (m_pUi->GetBossHp() <= 0)
@@ -262,27 +281,32 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 		m_pUi->SetBossHp(0);
 	}
 
-	if (m_isAttack)
-	{
-		m_isUnderAttack = true;
-	}
-	else
-	{
-		m_isUnderAttack = false;
-	}
 
 	CorrectPosition(stage);
 
 	//エネミーモデルの座標
 	MV1SetPosition(m_modelHandle, m_pos);
+
 	//エネミーモデルの回転値
 	MV1SetRotationXYZ(m_modelHandle, m_angle);
+
+	// 剣のモデルの位置と回転を設定
+	m_swordPos = MV1GetFramePosition(m_modelHandle, 66); // プレイヤーの手の位置に固定
+	MATRIX handMatrix = MV1GetFrameLocalMatrix(m_modelHandle, 66); // 手のローカルマトリックスを取得
+
+	// 剣の位置を設定
+	MV1SetPosition(m_modelHandle1, m_swordPos);
+	// 剣の回転を手の回転に合わせる
+	VECTOR handRotation = GetRotationFromMatrix(handMatrix);
+	MV1SetRotationXYZ(m_modelHandle1, VGet(handRotation.x, m_angle.y, handRotation.z)); // 手の回転を適用し、y軸はボスの向きに合わせる
+
 }
 
 void BossEnemy::Draw(std::shared_ptr<Player> m_pPlayer)
 {
 	//エネミーモデル描画
 	MV1DrawModel(m_modelHandle);
+	MV1DrawModel(m_modelHandle1);
 
 
 #ifdef _DEBUG
@@ -293,10 +317,13 @@ void BossEnemy::Draw(std::shared_ptr<Player> m_pPlayer)
 	DrawCapsule3D(VGet(m_pos.x, m_pos.y + upperPart, m_pos.z), VGet(m_pos.x, m_pos.y + bottom, m_pos.z), m_modelRadius, 8, 0xffffff, 0xffffff, false);
 
 	//攻撃球
-	DrawSphere3D(VAdd(m_attackPos, VGet(0, 10, 0)), m_attackRadius, 8, 0xffffff, 0xffffff, false);
+	DrawCapsule3D(m_handPos, m_attackPos, m_attackRadius, 8, 0xffffff, 0xffffff, false);
 
 	//索敵範囲球
 	DrawSphere3D(VAdd(m_pos, VGet(0, 0, 0)), m_discoveryRadius, 10, m_color, m_color, false);
+
+	//止まる範囲球
+	DrawSphere3D(VAdd(m_pos, VGet(0, 0, 0)), m_stopRadius, 10, 0xffffff, 0xffffff, false);
 
 #endif // _DEBUG
 
@@ -332,21 +359,61 @@ bool BossEnemy::Translation(std::shared_ptr<Player> m_pPlayer)
 
 bool BossEnemy::IsAttackColliding(std::shared_ptr<Player> m_pPlayer)
 {
-	float delX = (m_pos.x - m_pPlayer->GetPos().x) * (m_pos.x - m_pPlayer->GetPos().x);
-	float delY = (m_pos.y - m_pPlayer->GetPos().y) * (m_pos.y - m_pPlayer->GetPos().y);
-	float delZ = (m_pos.z - m_pPlayer->GetPos().z) * (m_pos.z - m_pPlayer->GetPos().z);
+	// プレイヤーと敵のカプセルの端点を計算
+	VECTOR topA = m_attackPos;
+	VECTOR bottomA = m_handPos;
+	VECTOR topB = { m_pPlayer->GetPos().x, m_pPlayer->GetPos().y + upperPart, m_pPlayer->GetPos().z };
+	VECTOR bottomB = { m_pPlayer->GetPos().x, m_pPlayer->GetPos().y + bottom, m_pPlayer->GetPos().z };
 
-	//球と球の距離
-	float Distance = sqrt(delX + delY + delZ);
+	// カプセルの中心点
+	VECTOR centerA = { (bottomA.x + topA.x) / 2, (bottomA.y + topA.y) / 2, (bottomA.z + topA.z) / 2 };
+	VECTOR centerB = { (bottomB.x + topB.x) / 2, (bottomB.y + topB.y) / 2, (bottomB.z + topB.z) / 2 };
 
-	//球と球の距離が剣とエネミーの半径よりも小さい場合
-	if (Distance < m_attackRadius + m_pPlayer->GetRadius())
+	// 各カプセルの端点間の最短距離を計算する
+	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2)
 	{
+		// 直線の距離の最短を求める
+		// ここで、2つの線分の最短距離を計算します
+		VECTOR dir1 = { top1.x - bottom1.x, top1.y - bottom1.y, top1.z - bottom1.z };
+		VECTOR dir2 = { top2.x - bottom2.x, top2.y - bottom2.y, top2.z - bottom2.z };
+		VECTOR diff = { bottom1.x - bottom2.x, bottom1.y - bottom2.y, bottom1.z - bottom2.z };
 
-		return true;
+		float a = dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z;
+		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
+		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
+		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + diff.z * diff.z;
+
+		float det = a * c - b * b;
+		if (det == 0.0f) {
+			return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		}
+
+		float s = (b * e - c * d) / det;
+		float t = (a * e - b * d) / det;
+
+		if (s < 0.0f) s = 0.0f;
+		else if (s > 1.0f) s = 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		else if (t > 1.0f) t = 1.0f;
+
+		VECTOR closestA = { bottom1.x + s * dir1.x, bottom1.y + s * dir1.y, bottom1.z + s * dir1.z };
+		VECTOR closestB = { bottom2.x + t * dir2.x, bottom2.y + t * dir2.y, bottom2.z + t * dir2.z };
+
+		VECTOR delta = { closestA.x - closestB.x, closestA.y - closestB.y, closestA.z - closestB.z };
+		return std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+	};
+
+	// プレイヤーのカプセルと敵のカプセルの端点間の最短距離を計算
+	float distance = capsuleSegmentDistance(bottomA, topA, bottomB, topB);
+
+	// 衝突判定
+	if (distance < m_attackRadius + m_pPlayer->GetRadius())
+	{
+		return true; // 衝突が発生した
 	}
 
-	return false;
+	return false; // 衝突は発生していない
 }
 
 bool BossEnemy::IsStopColliding(std::shared_ptr<Player> m_pPlayer)
@@ -645,6 +712,12 @@ void BossEnemy::ChangeAnim(int animIndex)
 	//現在再生中の待機アニメーションは変更前のアニメーション扱いに
 	m_prevAnimNo = m_currentAnimNo;
 
+	//攻撃アニメーションの場合はランダムに選択
+	if (animIndex == kAttackAnimIndex || animIndex == kAttackAnim1Index)
+	{
+		animIndex = GetRandomAttackAnimIndex();
+	}
+
 	//変更後のアニメーションとして攻撃アニメーションを改めて設定する
 	m_currentAnimNo = MV1AttachAnim(m_modelHandle, animIndex, -1, false);
 
@@ -658,4 +731,30 @@ void BossEnemy::ChangeAnim(int animIndex)
 
 	m_animSpeed = m_animSpeedMap[m_state];
 
+}
+
+int BossEnemy::GetRandomAttackAnimIndex()
+{
+	// 3つの攻撃アニメーションのインデックスをランダムに選択
+	int randomIndex = GetRand(2); // GetRand(2) は0から2の間のランダムな整数を生成する
+	switch (randomIndex)
+	{
+	case 0:
+		return kAttackAnimIndex;
+	case 1:
+		return kAttackAnim1Index;
+	case 2:
+		return kAttackAnimIndex; // ここに別の攻撃アニメーションインデックスを追加する場合は変更
+	default:
+		return kAttackAnimIndex; // デフォルトはkAttackAnimIndex
+	}
+}
+
+VECTOR BossEnemy::GetRotationFromMatrix(const MATRIX& matrix)
+{
+	VECTOR rotation;
+	rotation.x = atan2f(matrix.m[1][2], matrix.m[2][2]);
+	rotation.y = atan2f(-matrix.m[0][2], sqrtf(matrix.m[1][2] * matrix.m[1][2] + matrix.m[2][2] * matrix.m[2][2]));
+	rotation.z = atan2f(matrix.m[0][1], matrix.m[0][0]);
+	return rotation;
 }
