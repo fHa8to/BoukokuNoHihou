@@ -9,9 +9,9 @@
 #define PLAYER_DRAW_SIZE	20
 
 // Å‘å‚g‚o
-#define BOSS_ENEMY_HP_MAX		16
+#define BOSS_ENEMY_HP_MAX		51
 // ‚g‚o‚P‚Å‚Ç‚ê‚¾‚¯ƒo[‚ğL‚Î‚·‚©
-#define BOSS_ENEMY_DRAW_SIZE	51
+#define BOSS_ENEMY_DRAW_SIZE	16
 
 namespace Game
 {

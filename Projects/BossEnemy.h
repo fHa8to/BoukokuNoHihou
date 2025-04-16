@@ -70,7 +70,6 @@ private:
 
 	int GetRandomAttackAnimIndex();
 
-	VECTOR GetRotationFromMatrix(const MATRIX& matrix);
 
 	std::unordered_map<State, float> m_animSpeedMap; // 各ステートに対応するアニメーションの再生速度
 

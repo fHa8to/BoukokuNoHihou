@@ -290,15 +290,27 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 	//エネミーモデルの回転値
 	MV1SetRotationXYZ(m_modelHandle, m_angle);
 
-	// 剣のモデルの位置と回転を設定
-	m_swordPos = MV1GetFramePosition(m_modelHandle, 66); // プレイヤーの手の位置に固定
-	MATRIX handMatrix = MV1GetFrameLocalMatrix(m_modelHandle, 66); // 手のローカルマトリックスを取得
+	float rotX = DX_PI / 1.0f;	// X軸に90度回転
+	float rotY = DX_PI / 2.0f;	// Y軸に回転なし
+	float rotZ = DX_PI / 2.0f;	// Z軸に回転なし
 
-	// 剣の位置を設定
-	MV1SetPosition(m_modelHandle1, m_swordPos);
-	// 剣の回転を手の回転に合わせる
-	VECTOR handRotation = GetRotationFromMatrix(handMatrix);
-	MV1SetRotationXYZ(m_modelHandle1, VGet(handRotation.x, m_angle.y, handRotation.z)); // 手の回転を適用し、y軸はボスの向きに合わせる
+	//回転行列を作成
+	MATRIX rotMatrixX = MGetRotX(rotX);
+	MATRIX rotMatrixY = MGetRotY(rotY);
+	MATRIX rotMatrixZ = MGetRotZ(rotZ);
+
+	// 回転行列を合成（順番が重要）
+	// Z → Y → Xの順に合成（慣用的な回転順）
+	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
+
+	//手のワールドマトリックスを取得
+	MATRIX handWorldMatrix = MV1GetFrameLocalWorldMatrix(m_modelHandle, 66);
+
+	//回転を手のマトリックスに適用
+	MATRIX swordMatrix = MMult(rotationMatrix, handWorldMatrix);
+
+	//剣モデルにマトリックスを設定
+	MV1SetMatrix(m_modelHandle1, swordMatrix);
 
 }
 
@@ -748,13 +760,4 @@ int BossEnemy::GetRandomAttackAnimIndex()
 	default:
 		return kAttackAnimIndex; // デフォルトはkAttackAnimIndex
 	}
-}
-
-VECTOR BossEnemy::GetRotationFromMatrix(const MATRIX& matrix)
-{
-	VECTOR rotation;
-	rotation.x = atan2f(matrix.m[1][2], matrix.m[2][2]);
-	rotation.y = atan2f(-matrix.m[0][2], sqrtf(matrix.m[1][2] * matrix.m[1][2] + matrix.m[2][2] * matrix.m[2][2]));
-	rotation.z = atan2f(matrix.m[0][1], matrix.m[0][0]);
-	return rotation;
 }

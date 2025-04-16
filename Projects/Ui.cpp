@@ -7,7 +7,7 @@ namespace
 	const char* const kButtonA = "data/image/buttonA.png";
 	const char* const kButtonB = "data/image/buttonB.png";
 	const char* const kButtonX = "data/image/buttonX.png";
-	const char* const kButtonY = "data/image/buttonY.png";
+	const char* const kButtonLB = "data/image/buttonLB.png";
 
 }
 
@@ -25,7 +25,7 @@ Ui::Ui():
 	m_buttonAHandle = LoadGraph(kButtonA);
 	m_buttonBHandle = LoadGraph(kButtonB);
 	m_buttonXHandle = LoadGraph(kButtonX);
-	m_buttonYHandle = LoadGraph(kButtonY);
+	m_buttonLBHandle = LoadGraph(kButtonLB);
 
 	m_skillHandle = LoadGraph("data/image/skeleton1.png");
 
@@ -81,8 +81,10 @@ void Ui::PlayerDraw(const Player& player)
 	//UI‚Ì‰æ‘œ‚ð•`‰æ
 	DrawGraph(23, 35, PlayerHandle, true);
 
-	DrawGraph(Game::kScreenWidth - 215, Game::kScreenHeight - 255, m_buttonBoxHandle, true);
+	DrawGraph(Game::kScreenWidth - 215, Game::kScreenHeight - 305, m_buttonBoxHandle, true);
 
+
+	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 300, m_buttonLBHandle, true);
 	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 250, m_buttonAHandle, true);
 	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 200, m_buttonBHandle, true);
 	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 150, m_buttonXHandle, true);

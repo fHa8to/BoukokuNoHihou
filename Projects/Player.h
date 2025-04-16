@@ -126,7 +126,6 @@ private:
 
 	float GetAttackAnimSpeed(int animIndex);
 
-	VECTOR GetRotationFromMatrix(const MATRIX& matrix);
 
 	std::unordered_map<State, float> m_animSpeedMap; // 各ステートに対応するアニメーションの再生速度
 	std::shared_ptr<Skill> m_pSkill;
@@ -267,4 +266,11 @@ private:
 	bool m_attackHit; // スキル攻撃が当たったかどうかを管理するフラグ
 
 	int m_currentAttackAnimIndex; // 現在の攻撃アニメーションのインデックス
+
+	// Effekseerのエフェクトハンドル（クラス内 or グローバルで定義しておく）
+	int m_skillEffectHandle;
+
+	// Effekseerの再生ID（ループや停止用に保持してもOK）
+	int m_skillEffectPlayID;
+
 };

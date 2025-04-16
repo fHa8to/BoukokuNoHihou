@@ -52,7 +52,7 @@ namespace
 	constexpr int bottom = 2;		//下部
 
 	constexpr int kModelRadius = 4.0f;
-	constexpr int kAttackRadius = 6.0f;
+	constexpr int kAttackRadius = 3.0f;
 	constexpr int kRadiusRadius = 6.0f;
 
 
@@ -157,7 +157,6 @@ void Player::Init()
 	m_handPos = VGet(0.0f, 0.0f, 0.0f);
 	m_swordPos = VGet(0.0f, 0.0f, 0.0f);
 
-
 	MV1SetScale(m_modelHandle, VGet(kExpansion, kExpansion, kExpansion));
 	MV1SetScale(m_modelHandle1, VGet(kExpansion, kExpansion, kExpansion));
 
@@ -221,7 +220,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 	//Jump
 	if ((m_nowState != State::kJump) && (m_nowState != State::kDeath) && (m_nowState != State::kAttack))
 	{
-		if (Pad::IsPress(PAD_INPUT_1))
+		if (Pad::IsPress(PAD_INPUT_5))
 		{
 			Jump();
 		}
@@ -238,7 +237,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 
 
 	// ダッシュアニメーションの制御
-	if (Pad::IsPress(PAD_INPUT_9) && m_move.y == 0)
+	if (Pad::IsPress(PAD_INPUT_1) && m_move.y == 0)
 	{
 		m_runFrame++;
 		if (m_runFrame > 5)
@@ -260,6 +259,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 	if (Pad::IsPress(PAD_INPUT_2) && !m_isOnCooldown)
 	{
 		ActivateSkill();
+
 	}
 
 	// スキルの効果時間とクールタイムの更新
@@ -358,17 +358,29 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 	MV1SetPosition(m_modelHandle, m_pos);
 	MV1SetRotationXYZ(m_modelHandle, VGet(0, m_angle, 0));
 
-	// 剣のモデルの位置と回転を設定
-	m_swordPos = MV1GetFramePosition(m_modelHandle, 120); // プレイヤーの手の位置に固定
-	MATRIX handMatrix = MV1GetFrameLocalMatrix(m_modelHandle, 120); // 手のローカルマトリックスを取得
+	// --- 回転角度を指定（ラジアン単位） ---
+	// ここを好きな角度に変更して使ってね！（例：90度 = DX_PI / 2.0f）
+	float rotX = DX_PI / 1.0f; // X軸に90度回転
+	float rotY = DX_PI / 2.0f;         // Y軸に回転なし
+	float rotZ = DX_PI / 2.0f;         // Z軸に回転なし
 
-	// 剣の位置を設定
-	MV1SetPosition(m_modelHandle1, m_swordPos);
-	// 剣の回転を手の回転に合わせる
-	VECTOR handRotation = GetRotationFromMatrix(handMatrix);
-	MV1SetRotationXYZ(m_modelHandle1, VGet(handRotation.x, m_angle, handRotation.z)); // 手の回転を適用し、y軸はプレイヤーの向きに合わせる
+	// --- 回転行列を作成 ---
+	MATRIX rotMatrixX = MGetRotX(rotX);
+	MATRIX rotMatrixY = MGetRotY(rotY);
+	MATRIX rotMatrixZ = MGetRotZ(rotZ);
 
+	// --- 回転行列を合成（順番が重要） ---
+	// Z → Y → Xの順に合成（慣用的な回転順）
+	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
 
+	// --- 手のワールドマトリックスを取得 ---
+	MATRIX handWorldMatrix = MV1GetFrameLocalWorldMatrix(m_modelHandle, 138);
+
+	// --- 回転を手のマトリックスに適用 ---
+	MATRIX swordMatrix = MMult(rotationMatrix, handWorldMatrix);
+
+	// --- 剣モデルにマトリックスを設定 ---
+	MV1SetMatrix(m_modelHandle1, swordMatrix);
 }
 
 void Player::Draw()
@@ -497,14 +509,6 @@ float Player::GetAttackAnimSpeed(int animIndex)
 
 }
 
-VECTOR Player::GetRotationFromMatrix(const MATRIX& matrix)
-{
-	VECTOR rotation;
-	rotation.x = atan2f(matrix.m[1][2], matrix.m[2][2]);
-	rotation.y = atan2f(-matrix.m[0][2], sqrtf(matrix.m[1][2] * matrix.m[1][2] + matrix.m[2][2] * matrix.m[2][2]));
-	rotation.z = atan2f(matrix.m[0][1], matrix.m[0][0]);
-	return rotation;
-}
 
 Player::State Player::isGetState()
 {

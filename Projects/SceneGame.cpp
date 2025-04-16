@@ -197,6 +197,8 @@ std::shared_ptr<SceneBase> SceneGame::Update()
         }
     }
 
+
+
     if (m_pPlayer->GetSkill())
     {
 

@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="BossEnemy.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Effect.cpp" />
     <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="EnemyManager.cpp" />
     <ClCompile Include="main.cpp" />
@@ -41,6 +42,7 @@
   <ItemGroup>
     <ClInclude Include="BossEnemy.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Effect.h" />
     <ClInclude Include="Enemy.h" />
     <ClInclude Include="EnemyManager.h" />
     <ClInclude Include="Game.h" />
