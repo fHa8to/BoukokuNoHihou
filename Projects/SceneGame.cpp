@@ -17,9 +17,12 @@ namespace
     //フェード値の増減
     constexpr int kFadeUpDown = 8;
 
+
 }
 
 SceneGame::SceneGame() :
+    m_modelHandle(-1),
+    m_pos(VGet(0.0f, 0.0f, 0.0f)),
     m_isCommand(false),
     m_isEnemyTranslation(false),
     m_isBossEnemyTranslation(false),
@@ -36,6 +39,8 @@ SceneGame::SceneGame() :
 	m_isBossAttack(false),
 	m_isSkillBossEnemyAttack(false),
     m_isEnemyAttack(false),
+    m_isExplanaionAttack(false),
+    m_isExplanaion(false),
     m_isPlayerAttackCoolTime(false),
     m_isPlayerBossAttackCoolTime(false),
     m_isBossEnemyAttackCoolTime(false),
@@ -61,7 +66,12 @@ SceneGame::SceneGame() :
     m_pStage = std::make_shared<Stage>();
     m_pSkyDome = std::make_shared<SkyDome>();
     m_pUi = std::make_shared<Ui>();
-	m_pSkill = std::make_shared<Skill>();
+    m_pSkill = std::make_shared<Skill>();
+    m_pEffectManager = std::make_shared<EffectManager>();
+    m_pExplanation = std::make_shared<Explanation>();
+
+    m_textHandle = LoadGraph("data/image/text.png");
+
 }
 
 SceneGame::~SceneGame()
@@ -81,6 +91,8 @@ void SceneGame::Init()
 
     m_pCamera->Init();
 
+    m_pExplanation->Init();
+
     m_pPlayer->Load();
     m_pPlayer->Init();
 
@@ -89,6 +101,8 @@ void SceneGame::Init()
     m_pBossEnemy->Init();
 
     m_pUi->Init();
+
+    m_pEffectManager->Init();
 
 }
 
@@ -108,6 +122,8 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_pSkyDome->Update(m_pPlayer);
 
+    m_pExplanation->Update();
+
     m_pPlayer->SetCameraAngle(m_pCamera->GetAngle());
 
     m_pCamera->PlayerCameraUpdate(*m_pPlayer);
@@ -115,10 +131,12 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     m_pEnemy->Update(m_pPlayer, m_pUi, *m_pStage);
 
     m_pBossEnemy->Update(m_pPlayer, m_pUi,*m_pStage);
-    m_pPlayer->Update(m_pEnemy, m_pBossEnemy, m_pUi, *m_pStage);
+    m_pPlayer->Update(m_pEnemy, m_pBossEnemy, m_pUi, m_pExplanation, *m_pStage);
     m_pStage->Update();
 
     m_pUi->Update();
+
+    m_pEffectManager->Update();
 
     //プレイヤーと敵の当たり判定
     m_isEnemyHit = m_pPlayer->IsEnemyCapsuleColliding(m_pEnemy);
@@ -141,14 +159,21 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_isBossEnemyTranslation = m_pBossEnemy->Translation(m_pPlayer);
 
+    m_isExplanaionAttack = m_pPlayer->IsExplanationCapsuleColliding(m_pExplanation);
+
     //enemy止まる範囲
     m_isEnemyStop = m_pEnemy->IsStopColliding(m_pPlayer);
 
     m_isBossEnemyStop = m_pBossEnemy->IsStopColliding(m_pPlayer);
 
 
+    int m_bossAttackWaitCounter = 0;  // 攻撃待機カウンター
+    int m_bossNextAttackTime = 0;     // 次の攻撃までの時間（ランダムで決定）
+    bool m_isBossWaitingToAttack = false;
+
     if (!m_isEnemyStop)
     {
+
         if (m_isEnemyTranslation)
         {
             m_pEnemy->SetState(Enemy::kRun);
@@ -197,10 +222,28 @@ std::shared_ptr<SceneBase> SceneGame::Update()
         }
     }
 
+    if (m_pPlayer->GetUnderExplanationAttack())
+    {
+        if (m_isExplanaionAttack && !m_pPlayer->IsAttackHit())
+        {
+            m_pPlayer->SetAttackHit(true);
+            m_isExplanaion = true;
+        }
+    }
+
+
 
 
     if (m_pPlayer->GetSkill())
     {
+
+        // スキルを初回発動時のみ再生するように
+        if (!m_pPlayer->IsSkillEffectPlayed())
+        {
+            m_pEffectManager->DrawPlayerSkillEffect(m_pPlayer);
+            m_pPlayer->SetSkillEffectPlayed(true); // 一度だけ再生されるようにする
+        }
+
 
         m_pPlayer->SetAttackHit(false);
 
@@ -211,9 +254,10 @@ std::shared_ptr<SceneBase> SceneGame::Update()
             if (m_isSkillBossEnemyAttack && !m_pPlayer->IsSkillAttackHit())
             {
                 //HPを減らす
-                bossEnemyHp -= 3;
+                bossEnemyHp -= 4;
                 m_pUi->SetBossHp(bossEnemyHp);
                 m_pPlayer->SetSkillAttackHit(true); // フラグを設定
+                m_pEffectManager->DrawBossEnemyDamageEffect(m_pBossEnemy);
 
                 if (m_pUi->GetBossHp() >= 1)
                 {
@@ -229,9 +273,10 @@ std::shared_ptr<SceneBase> SceneGame::Update()
             if (m_isSkillPlayerAttack && !m_pPlayer->IsSkillAttackHit())
                 {
                     //HPを減らす
-                    enemyHp -= 3;
+                    enemyHp -= 4;
                     m_pEnemy->SetHp(enemyHp);
                     m_pPlayer->SetSkillAttackHit(true); // フラグを設定
+                    m_pEffectManager->DrawEnemyDamageEffect(m_pEnemy);
 
                     if (m_pEnemy->GetHp() >= 1)
                     {
@@ -243,7 +288,8 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     }
     else
     {
-        m_pPlayer->SetSkillAttackHit(false);
+        m_pPlayer->SetSkillEffectPlayed(false);  // 次回発動のためにフラグを戻す
+        m_pPlayer->SetSkillAttackHit(false);     // 攻撃ヒットフラグも戻す
 
         //プレイヤーの攻撃がボスに当たっている時
         if (m_pPlayer->GetUnderBossAttack())
@@ -254,6 +300,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                         bossEnemyHp -= 1;
                         m_pUi->SetBossHp(bossEnemyHp);
                         m_pPlayer->SetAttackHit(true);
+                        m_pEffectManager->DrawBossEnemyDamageEffect(m_pBossEnemy);
 
                         if (m_pUi->GetBossHp() >= 1)
                         {
@@ -271,6 +318,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                         enemyHp -= 1;
                         m_pEnemy->SetHp(enemyHp);
                         m_pPlayer->SetAttackHit(true);
+                        m_pEffectManager->DrawEnemyDamageEffect(m_pEnemy);
 
                         if (m_pEnemy->GetHp() >= 1)
                         {
@@ -279,38 +327,41 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                     }
         }
 
+
+
+        //敵の攻撃が当たっている時
+        if (m_pEnemy->GetUnderAttack())
+        {
+                    if (m_isEnemyAttack && !m_pEnemy->IsAttackHit())
+                    {
+                        playerHp -= 1;
+                        m_pUi->SetPlayerHp(playerHp);
+                        m_pEffectManager->DrawPlayerDamageEffect(m_pPlayer);
+
+                        m_pEnemy->SetAttackHit(true);
+                        m_pPlayer->SetDamage(true);
+                    }
+
+        }
+
+        //Boss敵の攻撃が当たっている時
+        if (m_pBossEnemy->GetUnderAttack())
+        {
+                    if (m_isBossAttack && !m_pBossEnemy->IsAttackHit())
+                    {
+                        playerHp -= 2;
+                        m_pUi->SetPlayerHp(playerHp);
+                        m_pEffectManager->DrawPlayerDamageEffect(m_pPlayer);
+
+                        m_pBossEnemy->SetAttackHit(true);
+                        m_pPlayer->SetDamage(true);
+
+                    }
+        }
+
     }
 
-
-    //敵の攻撃が当たっている時
-    if (m_pEnemy->GetUnderAttack())
-    {
-                if (m_isEnemyAttack && !m_pEnemy->IsAttackHit())
-                {
-                    playerHp -= 1;
-                    m_pUi->SetPlayerHp(playerHp);
-
-                    m_pEnemy->SetAttackHit(true);
-                    m_pPlayer->SetDamage(true);
-                    m_enemyFrame = 0;
-                }
-
-    }
-
-    //Boss敵の攻撃が当たっている時
-    if (m_pBossEnemy->GetUnderAttack())
-    {
-                if (m_isBossAttack && !m_pBossEnemy->IsAttackHit())
-                {
-                    playerHp -= 2;
-                    m_pUi->SetPlayerHp(playerHp);
-
-                    m_pBossEnemy->SetAttackHit(true);
-                    m_pPlayer->SetDamage(true);
-
-                }
-    }
-
+    m_pEffectManager->ResetFlags();
 
     if (m_pUi->GetPlayerHp() == 0)
     {
@@ -343,6 +394,9 @@ std::shared_ptr<SceneBase> SceneGame::Update()
         }
     }
 
+    //エネミーモデルの座標
+    MV1SetPosition(m_modelHandle, m_pos);
+
     //フレームイン、アウト
     if (m_isSceneEnd)
     {
@@ -362,6 +416,8 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     }
 
     return shared_from_this();
+
+
 }
 
 
@@ -370,17 +426,21 @@ void SceneGame::Draw()
     m_pSkyDome->Draw();
     m_pStage->Draw();
 
-
 #ifdef _DEBUG
 
     DrawGrid();
 
-#endif 
+#endif
 
+
+    //エフェクトの描画
+    m_pEffectManager->Draw();
 
     m_pBossEnemy->Draw(m_pPlayer);
     m_pEnemy->Draw(m_pPlayer);
     m_pPlayer->Draw();
+
+    m_pExplanation->Draw();
 
     m_pUi->PlayerDraw(*m_pPlayer);
 
@@ -394,6 +454,8 @@ void SceneGame::Draw()
 
     DrawString(0, 0, "SceneGame", 0x000000);
 
+
+  
 
     if (m_isEnemyHit)
     {
@@ -517,9 +579,11 @@ void SceneGame::End()
 {
 
     m_pStage->End();
+    m_pExplanation->End();
     m_pPlayer->Delete();
     m_pBossEnemy->End();
     m_pEnemy->End();
+    m_pEffectManager->End();
 }
 
 void SceneGame::DrawGrid()

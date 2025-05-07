@@ -19,11 +19,12 @@ namespace
 	//アニメーション番号
 	constexpr int kIdleAnimIndex = 0;
 	constexpr int kWalkAnimIndex = 1;
-	constexpr int kRnuAnimIndex = 1;
 	constexpr int kAttackAnimIndex = 3;
 	constexpr int kDamageAnimIndex = 4;
 	constexpr int kDeadAnimIndex = 5;
 	constexpr int kAttackAnim1Index = 6;
+	constexpr int kSpecialAttackAnim1 = 3;
+	constexpr int kSpecialAttackAnim2 = 6;
 
 
 	//アニメーションの切り替えにかかるフレーム数
@@ -31,7 +32,7 @@ namespace
 	constexpr float kAnimChangeRateSpeed = 1.0f / kAnimChangeFrame;
 
 	//敵の速さ
-	constexpr float kSpeed = 0.7f;
+	constexpr float kSpeed = 0.5f;
 
 	//カプセルの座標
 	constexpr int upperPart = 15;	//上部
@@ -40,9 +41,9 @@ namespace
 	constexpr int kAttackDelayDuration = 200; // 遅延フレーム数
 
 	constexpr int kModelRadius = 4.0f;
-	constexpr int kAttackRadius = 3.0f;
+	constexpr int kAttackRadius = 2.0f;
 	constexpr int kDiscoveryRadius = 80.0f;
-	constexpr int kStopRadius = 10.0f;
+	constexpr int kStopRadius = 15.0f;
 
 }
 
@@ -68,6 +69,8 @@ BossEnemy::BossEnemy():
 	m_isRnu(false),
 	m_isDead(false),
 	m_attackHit(false),
+	m_isSpecialAttack(false),
+	m_playingSpecialAttackSecondAnim(false),	
 	m_hp(0),
 	m_state(kIdle),
 	m_kabeNum(0),
@@ -107,10 +110,9 @@ void BossEnemy::Init()
 	m_handPos = VGet(0.0f, 0.0f, 0.0f);
 	m_swordPos = VGet(0.0f, 0.0f, 0.0f);
 
-	m_angle = VGet(0.0f, D2R(0.0f), 0.0f);
+	m_angle = VGet(0.0f, D2R(90.0f), 0.0f);
 
 	m_hp = BOSS_ENEMY_HP_MAX;
-
 
 	MV1SetScale(m_modelHandle, VGet(kExpansion, kExpansion, kExpansion));
 	MV1SetScale(m_modelHandle1, VGet(kExpansion, kExpansion, kExpansion));
@@ -145,6 +147,7 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 
 	m_attackPos = MV1GetFramePosition(m_modelHandle1, 0);
 	m_handPos = MV1GetFramePosition(m_modelHandle, 66);
+	m_damagePos = MV1GetFramePosition(m_modelHandle, 2);
 
 	//重力
 	m_move.y -= 0.1;
@@ -167,12 +170,30 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 
 	}
 
-
 	if (!m_isAttack)
 	{
 		//攻撃の時
 		if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 		{
+			// プレイヤーとの方向ベクトルを計算
+			VECTOR toPlayer = VSub(m_pPlayer->GetPos(), m_pos);
+			float targetAngle = atan2f(-toPlayer.x, -toPlayer.z); // プレイヤー方向の角度
+
+			// 現在の角度と目標角度の差を計算
+			float angleDiff = targetAngle - m_angle.y;
+
+			// 差を -π ～ π に正規化
+			while (angleDiff < -DX_PI_F) angleDiff += DX_PI_F * 2.0f;
+			while (angleDiff > DX_PI_F) angleDiff -= DX_PI_F * 2.0f;
+
+			// 角度を補間（スムーズに回転）
+			float turnSpeed = 0.1f; // この値で回転速度を調整
+			m_angle.y += angleDiff * turnSpeed;
+
+			// モデルの回転を反映
+			MV1SetRotationXYZ(m_modelHandle, VGet(0.0f, m_angle.y + DX_PI_F, 0.0f));
+
+
 			if (m_attackDelayCounter == 0)
 			{
 					ChangeAnim(GetRandomAttackAnimIndex());
@@ -229,9 +250,9 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 
 			if (!m_isRnu)
 			{
-				ChangeAnim(kRnuAnimIndex);
+				ChangeAnim(kWalkAnimIndex);
 			}
-			m_animIndex = kRnuAnimIndex;
+			m_animIndex = kWalkAnimIndex;
 
 			m_isRnu = true;
 
@@ -290,17 +311,15 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 	//エネミーモデルの回転値
 	MV1SetRotationXYZ(m_modelHandle, m_angle);
 
-	float rotX = DX_PI / 1.0f;	// X軸に90度回転
-	float rotY = DX_PI / 2.0f;	// Y軸に回転なし
-	float rotZ = DX_PI / 2.0f;	// Z軸に回転なし
+	float rotX = DX_PI / 1.0f;
+	float rotY = DX_PI / 2.0f;
+	float rotZ = DX_PI / 2.0f;
 
 	//回転行列を作成
 	MATRIX rotMatrixX = MGetRotX(rotX);
 	MATRIX rotMatrixY = MGetRotY(rotY);
 	MATRIX rotMatrixZ = MGetRotZ(rotZ);
 
-	// 回転行列を合成（順番が重要）
-	// Z → Y → Xの順に合成（慣用的な回転順）
 	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
 
 	//手のワールドマトリックスを取得
@@ -756,7 +775,7 @@ int BossEnemy::GetRandomAttackAnimIndex()
 	case 1:
 		return kAttackAnim1Index;
 	case 2:
-		return kAttackAnimIndex; // ここに別の攻撃アニメーションインデックスを追加する場合は変更
+		return kSpecialAttackAnim1; // ここに別の攻撃アニメーションインデックスを追加する場合は変更
 	default:
 		return kAttackAnimIndex; // デフォルトはkAttackAnimIndex
 	}

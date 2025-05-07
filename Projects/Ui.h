@@ -39,7 +39,7 @@ private:
 	int m_buttonAHandle;
 	int m_buttonBHandle;
 	int m_buttonXHandle;
-	int m_buttonLBHandle;
+	int m_buttonRBHandle;
 
 	int m_skillHandle;
 

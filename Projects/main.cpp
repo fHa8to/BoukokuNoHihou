@@ -5,6 +5,7 @@
 #include "Player.h"
 #include "Enemy.h"
 #include "Camera.h"
+#include "EffekseerForDXLib.h"
 
 
 // プログラムは WinMain から始まります
@@ -27,6 +28,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		return -1;			// エラーが起きたら直ちに終了
 	}
+
+	// Effekseerの初期化
+	Effekseer_Init(8000);
 
 	SetDrawScreen(DX_SCREEN_BACK);
 
@@ -73,6 +77,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 	pScene->End();
+
+	Effkseer_End();
+	
 	DxLib_End();				// ＤＸライブラリ使用の終了処理
 
 	return 0;				// ソフトの終了 

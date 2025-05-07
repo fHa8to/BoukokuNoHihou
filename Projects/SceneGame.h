@@ -11,6 +11,8 @@
 #include "Ui.h"
 #include "Skill.h"
 #include "EnemyManager.h"
+#include "EffectManager.h"
+#include "Explanation.h"
 
 class Camera;
 class Player;
@@ -21,6 +23,8 @@ class SkyDome;
 class Ui;
 class Skill;
 class EnemyManager;
+class EffectManager;
+class Explanation;
 
 class SceneGame : public SceneBase
 {
@@ -45,12 +49,19 @@ private:
 	std::shared_ptr<SkyDome> m_pSkyDome;
 	std::shared_ptr<Ui> m_pUi;
 	std::shared_ptr<Skill> m_pSkill;
+	std::shared_ptr<EffectManager> m_pEffectManager;
+	std::shared_ptr<Explanation> m_pExplanation;
+
 
 
 private:
 	//フェードイン、アウト
 	int m_fadeAlpha;
 
+	//モデルハンドル
+	int m_modelHandle;
+
+	int m_textHandle;
 
 
 	//シーン終了フラグ
@@ -69,6 +80,8 @@ private:
 	bool m_isSkillPlayerAttack;
 	bool m_isEnemyAttack;
 	bool m_isBossEnemyAttack;
+	bool m_isExplanaionAttack;
+	bool m_isExplanaion;
 	bool m_isSkillBossEnemyAttack;
 	bool m_isBossAttack;
 	bool m_isStepOnAttock;
@@ -98,7 +111,7 @@ private:
 	int m_enemyFrame;
 	int m_bossEnemyFrame;
 
-	VECTOR m_prevPlayerPos;
+	VECTOR m_pos;
 
 	//カメラの座標
 	VECTOR m_cameraPos;

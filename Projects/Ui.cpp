@@ -7,7 +7,7 @@ namespace
 	const char* const kButtonA = "data/image/buttonA.png";
 	const char* const kButtonB = "data/image/buttonB.png";
 	const char* const kButtonX = "data/image/buttonX.png";
-	const char* const kButtonLB = "data/image/buttonLB.png";
+	const char* const kButtonRB = "data/image/buttonRB.png";
 
 }
 
@@ -25,7 +25,7 @@ Ui::Ui():
 	m_buttonAHandle = LoadGraph(kButtonA);
 	m_buttonBHandle = LoadGraph(kButtonB);
 	m_buttonXHandle = LoadGraph(kButtonX);
-	m_buttonLBHandle = LoadGraph(kButtonLB);
+	m_buttonRBHandle = LoadGraph(kButtonRB);
 
 	m_skillHandle = LoadGraph("data/image/skeleton1.png");
 
@@ -50,12 +50,13 @@ void Ui::Update()
 
 void Ui::TitleDraw()
 {
-	DrawGraph(Game::kScreenWidth / 4, Game::kScreenHeight / 6, TitleHandle, true);
+	DrawGraph(Game::kScreenWidth / 2 - 285, Game::kScreenHeight / 6, TitleHandle, true);
 
 }
 
 void Ui::PlayerDraw(const Player& player)
 {
+
 	// HP ‚Ì’l•ª‚Ì‘å‚«‚³‚¾‚ªŽlŠp‚ÉŽû‚Ü‚é‚æ‚¤‚É’l‚ð‘å‚«‚­‚µ‚Ü‚·
 	DrawBox(39, 50, 42 + PLAYER_HP_MAX * PLAYER_DRAW_SIZE, 80, 0x000000, true);
 	DrawBox(40, 50, 40 + PlayerHp * PLAYER_DRAW_SIZE, 80, 0x26b609, true);
@@ -84,7 +85,7 @@ void Ui::PlayerDraw(const Player& player)
 	DrawGraph(Game::kScreenWidth - 215, Game::kScreenHeight - 305, m_buttonBoxHandle, true);
 
 
-	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 300, m_buttonLBHandle, true);
+	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 300, m_buttonRBHandle, true);
 	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 250, m_buttonAHandle, true);
 	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 200, m_buttonBHandle, true);
 	DrawGraph(Game::kScreenWidth - 200, Game::kScreenHeight - 150, m_buttonXHandle, true);

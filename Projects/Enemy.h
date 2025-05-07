@@ -45,6 +45,10 @@ public:
 
 	int SetColor(int color) { return m_color = color; }
 
+	//エネミーのダメージ座標を取得
+	VECTOR& GetDamgePos() { return m_damagePos; }
+
+
 	enum State
 	{
 		kIdle,		//待機
@@ -106,6 +110,7 @@ private:
 	VECTOR m_mapHitColl;    //キャラクターのマップとの当たり判定
 	VECTOR m_handPos;
 	VECTOR m_swordPos;
+	VECTOR m_damagePos;
 
 
 	//進む距離

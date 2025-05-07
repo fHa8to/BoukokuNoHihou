@@ -12,6 +12,7 @@ class BossEnemy;
 class Stage;
 class Ui;
 class Skill;
+class Explanation;
 
 
 class Player
@@ -24,7 +25,7 @@ public:
 	void Delete();
 
 	void Init();
-	void Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, Stage& stage);
+	void Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, std::shared_ptr<Explanation> m_pExplanation, Stage& stage);
 	void Draw();
 
 	//カメラの方向を取得
@@ -33,13 +34,12 @@ public:
 	//プレイヤーの座標を取得
 	const VECTOR& GetPos() const { return m_pos; }
 
-	//プレイヤーの座標を取得
-	const VECTOR& GetPrevPos() const { return m_prevPos; }
-
 	const float& GetAngle() const { return m_angle; }
 
 	//攻撃の取得
 	const bool& GetUnderAttack() const { return m_isEnemyUnderAttack; }
+	//攻撃の取得
+	const bool& GetUnderExplanationAttack() const { return m_isExplanationUnderAttack; }
 	//攻撃の取得
 	const bool& GetUnderBossAttack() const { return m_isBossUnderAttack; }
 	//攻撃の取得
@@ -69,7 +69,11 @@ public:
 	//当たり判定の半径
 	float GetRadius() { return m_modelRadius; }
 
+	bool IsSkillEffectPlayed() const { return m_isSkillEffectPlayed; }
+	void SetSkillEffectPlayed(bool val) { m_isSkillEffectPlayed = val; }
 
+	//カプセルの当たり判定(敵)
+	bool IsExplanationCapsuleColliding(std::shared_ptr<Explanation> m_pExplanation);
 
 	//カプセルの当たり判定(敵)
 	bool IsEnemyCapsuleColliding(std::shared_ptr<Enemy> m_pEnemy);
@@ -100,6 +104,9 @@ public:
 
 	void ActivateSkill();
 	void UpdateSkillCooldown();
+
+	//ダメージ座標を取得
+	VECTOR& GetDamgePos() { return m_damagePos; }
 
 	enum State
 	{
@@ -198,6 +205,7 @@ private:
 	VECTOR m_mapHitColl;    //キャラクターのマップとの当たり判定
 	VECTOR m_handPos;
 	VECTOR m_swordPos;
+	VECTOR m_damagePos;
 
 
 	//カプセルの点
@@ -224,6 +232,8 @@ private:
 	bool m_isDamage;		//ダメージ
 	bool m_isDeath;		//死
 
+	bool m_jumpMove;
+
 	bool m_isSkill;		//スキル
 
 	//アニメーションフラグ
@@ -236,6 +246,7 @@ private:
 	//当たり判定の発生フラグ
 	bool m_isEnemyUnderAttack;
 	bool m_isBossUnderAttack;
+	bool m_isExplanationUnderAttack;
 	bool m_isSkillEnemyUnderAttack;
 	bool m_isSkillBossUnderAttack;
 
@@ -267,10 +278,8 @@ private:
 
 	int m_currentAttackAnimIndex; // 現在の攻撃アニメーションのインデックス
 
-	// Effekseerのエフェクトハンドル（クラス内 or グローバルで定義しておく）
-	int m_skillEffectHandle;
+	bool m_isSkillEffectPlayed = false;
 
-	// Effekseerの再生ID（ループや停止用に保持してもOK）
-	int m_skillEffectPlayID;
+	bool m_wasRunOnJump = false;
 
 };

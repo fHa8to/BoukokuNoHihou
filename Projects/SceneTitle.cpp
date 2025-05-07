@@ -272,7 +272,7 @@ void SceneTitle::Draw()
 
 
 	// ƒƒjƒ…[€–Ú‚Ì•`‰æ
-	const int menuX = Game::kScreenWidth / 2 - 5;
+	const int menuX = Game::kScreenWidth / 2 - 10;
 	const int menuY = Game::kScreenHeight - 220;
 	const int menuSpacing = 40;
 

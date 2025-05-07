@@ -46,7 +46,7 @@ namespace
 	constexpr int kAttackDelayDuration = 200; // 遅延フレーム数
 
 	constexpr int kModelRadius = 4.0f;
-	constexpr int kAttackRadius = 2.0f;
+	constexpr int kAttackRadius = 1.0f;
 	constexpr int kDiscoveryRadius = 50.0f;
 	constexpr int kStopRadius = 5.0f;
 
@@ -154,6 +154,7 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 
 	m_attackPos = MV1GetFramePosition(m_modelHandle1, 0);
 	m_handPos = MV1GetFramePosition(m_modelHandle, 66);
+	m_damagePos = MV1GetFramePosition(m_modelHandle, 2);
 
 	//重力
 	m_move.y -= 0.1;
@@ -317,17 +318,15 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 	//エネミーモデルの回転値
 	MV1SetRotationXYZ(m_modelHandle, m_angle);
 
-	float rotX = DX_PI / 1.0f;	// X軸に90度回転
-	float rotY = DX_PI / 2.0f;	// Y軸に回転なし
-	float rotZ = DX_PI / 2.0f;	// Z軸に回転なし
+	float rotX = DX_PI / 1.0f;	
+	float rotY = DX_PI / 2.0f;	
+	float rotZ = DX_PI / 2.0f;	
 
 	//回転行列を作成
 	MATRIX rotMatrixX = MGetRotX(rotX);
 	MATRIX rotMatrixY = MGetRotY(rotY);
 	MATRIX rotMatrixZ = MGetRotZ(rotZ);
 
-	// 回転行列を合成（順番が重要）
-	// Z → Y → Xの順に合成（慣用的な回転順）
 	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
 
 	//手のワールドマトリックスを取得

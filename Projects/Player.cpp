@@ -5,6 +5,7 @@
 #include "Pad.h"
 #include "Stage.h"
 #include "Skill.h"
+#include "Explanation.h"
 #include "Ui.h"
 #include <cmath>
 #include <cassert>
@@ -17,7 +18,7 @@ namespace
 	const char* const kModelFilename1 = "data/model/weapon/sword.mv1";
 
 	//モデルの向いてる位置の初期化
-	constexpr float kInitAngle = 3.143059f;
+	constexpr float kInitAngle = 0;
 
 	//モデルのサイズ変更
 	constexpr float kExpansion = 0.1f;
@@ -42,7 +43,7 @@ namespace
 	constexpr float kAnimChangeRateSpeed = 1.0f / kAnimChangeFrame;
 
 	//アナログスティックによる移動関連
-	constexpr float kMaxSpeed = 0.4f;		//プレイヤーの最大移動速度
+	constexpr float kMaxSpeed = 0.5f;		//プレイヤーの最大移動速度
 	constexpr float kAnalogRaneMin = 0.4f;	//アナログスティックの入力判定範囲
 	constexpr float kAnalogRaneMax = 0.8f;
 	constexpr float kAnglogInputMax = 1000.0f;	//アナログスティックの入力されるベクトルに
@@ -92,6 +93,7 @@ Player::Player() :
 	m_isSkill(false),
 	m_isEnemyUnderAttack(false),
 	m_isBossUnderAttack(false),
+	m_isExplanationUnderAttack(false),
 	m_isSkillEnemyUnderAttack(false),
 	m_isSkillBossUnderAttack(false),
 	m_isDamage(false),
@@ -160,10 +162,10 @@ void Player::Init()
 	MV1SetScale(m_modelHandle, VGet(kExpansion, kExpansion, kExpansion));
 	MV1SetScale(m_modelHandle1, VGet(kExpansion, kExpansion, kExpansion));
 
-	m_pSkill->Init(); // 追加
+	m_pSkill->Init(); 
 }
 
-void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, Stage& stage)
+void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, std::shared_ptr<Explanation> m_pExplanation, Stage& stage)
 {
 
 	Pad::Update();
@@ -195,39 +197,33 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 
 	m_attackPos = MV1GetFramePosition(m_modelHandle1, 0);
 	m_handPos = MV1GetFramePosition(m_modelHandle, 120);
+	m_damagePos = MV1GetFramePosition(m_modelHandle, 2);
 
 	m_swordPos = m_handPos;
 
 	//移動処理
-	if(!m_isDamage && (m_nowState == State::kIdle) || (m_nowState == State::kWalk) || (m_nowState == State::kRun))
-	{ 
+	if (!m_isDamage && (m_nowState == State::kIdle || m_nowState == State::kWalk || m_nowState == State::kRun || m_nowState == State::kJump))
+	{
 		Move(); 
 		m_isMove = true;
 	}
-	else
-	{
-		m_isMove = false;
-	}
 
-	// 攻撃中に移動入力があった場合、攻撃をキャンセルする
-	if (m_isAttack && (Pad::IsPress(PAD_INPUT_LEFT) || Pad::IsPress(PAD_INPUT_RIGHT) || Pad::IsPress(PAD_INPUT_UP) || Pad::IsPress(PAD_INPUT_DOWN)))
-	{
-		m_isAttack = false;
-		m_nowState = State::kIdle;
-		ChangeAnim(kIdleAnimIndex);
-	}
 
 	//Jump
 	if ((m_nowState != State::kJump) && (m_nowState != State::kDeath) && (m_nowState != State::kAttack))
 	{
-		if (Pad::IsPress(PAD_INPUT_5))
+		if (Pad::IsPress(PAD_INPUT_1))
 		{
+			m_wasRunOnJump = m_isRun;
+
 			Jump();
+
 		}
 	}
 	
+
 	//Attack
-	if ((m_nowState != State::kAttack) && (m_nowState != State::kDamage) && m_move.y == 0)
+	if ((m_nowState != State::kAttack) && (m_nowState != State::kDamage) && (m_nowState != State::kWalk) && m_move.y == 0)
 	{
 		if (Pad::IsPress(PAD_INPUT_3))
 		{
@@ -237,15 +233,12 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 
 
 	// ダッシュアニメーションの制御
-	if (Pad::IsPress(PAD_INPUT_1) && m_move.y == 0)
+	if (Pad::IsPress(PAD_INPUT_6) && m_move.y == 0)
 	{
 		m_runFrame++;
 		if (m_runFrame > 5)
 		{
 			m_isRun = true;
-
-			//動くスピード
-			m_move = VScale(m_move, 2.0f);
 
 		}
 	}
@@ -331,6 +324,11 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 			m_isBossUnderAttack = true;
 		}
 
+		if (IsExplanationCapsuleColliding(m_pExplanation))
+		{
+			m_isExplanationUnderAttack = true;
+		}
+
 		// ダメージを受けた際の移動量を制限
 		m_move = VScale(m_move, 0.0f);
 
@@ -341,6 +339,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 		m_attackHit = false;
 		m_isEnemyUnderAttack = false;
 		m_isBossUnderAttack = false;
+		m_isExplanationUnderAttack = false;
 	}
 
 
@@ -358,28 +357,24 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 	MV1SetPosition(m_modelHandle, m_pos);
 	MV1SetRotationXYZ(m_modelHandle, VGet(0, m_angle, 0));
 
-	// --- 回転角度を指定（ラジアン単位） ---
-	// ここを好きな角度に変更して使ってね！（例：90度 = DX_PI / 2.0f）
-	float rotX = DX_PI / 1.0f; // X軸に90度回転
-	float rotY = DX_PI / 2.0f;         // Y軸に回転なし
-	float rotZ = DX_PI / 2.0f;         // Z軸に回転なし
+	float rotX = DX_PI / 1.0f;
+	float rotY = DX_PI / 2.0f;
+	float rotZ = DX_PI / 2.0f;
 
 	// --- 回転行列を作成 ---
 	MATRIX rotMatrixX = MGetRotX(rotX);
 	MATRIX rotMatrixY = MGetRotY(rotY);
 	MATRIX rotMatrixZ = MGetRotZ(rotZ);
 
-	// --- 回転行列を合成（順番が重要） ---
-	// Z → Y → Xの順に合成（慣用的な回転順）
 	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
 
-	// --- 手のワールドマトリックスを取得 ---
+	//手のワールドマトリックスを取得
 	MATRIX handWorldMatrix = MV1GetFrameLocalWorldMatrix(m_modelHandle, 138);
 
-	// --- 回転を手のマトリックスに適用 ---
+	//回転を手のマトリックスに適用
 	MATRIX swordMatrix = MMult(rotationMatrix, handWorldMatrix);
 
-	// --- 剣モデルにマトリックスを設定 ---
+	//剣モデルにマトリックスを設定
 	MV1SetMatrix(m_modelHandle1, swordMatrix);
 }
 
@@ -525,7 +520,7 @@ Player::State Player::isGetState()
 	}
 
 	//ジャンプ
-	if (m_move.y != 0)
+	if (m_move.y != 0.0f)
 	{
 		return State::kJump;
 	}
@@ -543,14 +538,14 @@ Player::State Player::isGetState()
 	}
 
 	//待機
-	if (VSize(m_move) == 0.0f && m_move.y == 0)
+	if (VSize(m_move) == 0.0f && m_move.y == 0.0f)
 	{
 		return State::kIdle;
 	}
 
 
 	//歩き
-	if (VSize(m_move) != 0.0f && m_move.y == 0)
+	if (VSize(m_move) != 0.0f && m_move.y == 0.0f)
 	{
 		return State::kWalk;
 	}
@@ -586,40 +581,54 @@ void Player::Move()
 	rate = min(rate, 1.0f);
 	rate = max(rate, 0.0f);
 
-	//速度が決定できるので移動ベクトルに反映する
-	move = VNorm(move);
-	float speed = m_speed * rate;
-	move = VScale(move, speed);
-
-
-	MATRIX mtx = MGetRotY(-m_cameraAngle - DX_PI_F / 2);
-	move = VTransform(move, mtx);
-	m_move = move;
-
-	m_pos = VAdd(m_pos, move);
-
-
-	if (VSquareSize(move) > 0.0f)
+	// 入力があるときだけ移動＆向き更新する
+	if (rate > 0.0f)
 	{
+		move = VNorm(move);
+		float speed = m_speed * rate;
+		if (m_isRun || (m_nowState == State::kJump && m_wasRunOnJump))
+		{
+			speed *= 1.5f; // ダッシュ時にスピードアップ
+		}
+
+		move = VScale(move, speed);
+
+		// ジャンプ中の上下移動を保持
+		float oldY = m_move.y;
+
+		// カメラに対する向きで移動ベクトルを回転
+		MATRIX mtx = MGetRotY(-m_cameraAngle - DX_PI_F / 2);
+		move = VTransform(move, mtx);
+		move.y = oldY;
+
+		// 移動ベクトルを更新
+		m_move = move;
+
+		// 向きと攻撃方向を更新
 		m_angle = atan2f(-move.z, move.x) - DX_PI_F / 2;
 		m_attackDir = VNorm(move);
-	}
 
+		// 実際に座標を更新
+		m_pos = VAdd(m_pos, move);
+	}
+	else
+	{
+		float oldY = m_move.y;
+		m_move = VGet(0.0f, oldY, 0.0f);
+	}
 }
 
 void Player::Jump()
 {
-	// ジャンプ中も走っている時の速度を維持する
-	if (m_isRun)
+
+	if (m_wasRunOnJump)
 	{
-		m_move = VScale(m_move, 2.0f);
+		m_move.y = 2.2f;
 	}
 	else
 	{
-		move = VScale(move, kMaxSpeed);
+		m_move.y = 2.0f;
 	}
-	m_move.y = 3.0f;
-	
 }
 
 /*アニメーション処理*/
@@ -728,6 +737,63 @@ void Player::DeathAnim()
 	m_animIndex = kDeathAnimIndex;
 	m_backState = State::kDeath;
 
+}
+
+bool Player::IsExplanationCapsuleColliding(std::shared_ptr<Explanation> m_pExplanation)
+{
+	// プレイヤーと敵のカプセルの端点を計算
+	VECTOR topA = m_attackPos;
+	VECTOR bottomA = m_handPos;
+	VECTOR topB = m_pExplanation->GetPos();
+	VECTOR bottomB = m_pExplanation->GetHeadPos();
+
+	// カプセルの中心点
+	VECTOR centerA = { (bottomA.x + topA.x) / 2, (bottomA.y + topA.y) / 2, (bottomA.z + topA.z) / 2 };
+	VECTOR centerB = { (bottomB.x + topB.x) / 2, (bottomB.y + topB.y) / 2, (bottomB.z + topB.z) / 2 };
+
+	// 各カプセルの端点間の最短距離を計算する
+	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2) {
+		// 直線の距離の最短を求める
+		// ここで、2つの線分の最短距離を計算します
+		VECTOR dir1 = { top1.x - bottom1.x, top1.y - bottom1.y, top1.z - bottom1.z };
+		VECTOR dir2 = { top2.x - bottom2.x, top2.y - bottom2.y, top2.z - bottom2.z };
+		VECTOR diff = { bottom1.x - bottom2.x, bottom1.y - bottom2.y, bottom1.z - bottom2.z };
+
+		float a = dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z;
+		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
+		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
+		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + diff.z * diff.z;
+
+		float det = a * c - b * b;
+		if (det == 0.0f) {
+			return std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		}
+
+		float s = (b * e - c * d) / det;
+		float t = (a * e - b * d) / det;
+
+		if (s < 0.0f) s = 0.0f;
+		else if (s > 1.0f) s = 1.0f;
+		if (t < 0.0f) t = 0.0f;
+		else if (t > 1.0f) t = 1.0f;
+
+		VECTOR closestA = { bottom1.x + s * dir1.x, bottom1.y + s * dir1.y, bottom1.z + s * dir1.z };
+		VECTOR closestB = { bottom2.x + t * dir2.x, bottom2.y + t * dir2.y, bottom2.z + t * dir2.z };
+
+		VECTOR delta = { closestA.x - closestB.x, closestA.y - closestB.y, closestA.z - closestB.z };
+		return std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		};
+
+	// プレイヤーのカプセルと敵のカプセルの端点間の最短距離を計算
+	float distance = capsuleSegmentDistance(bottomA, topA, bottomB, topB);
+
+	// 衝突判定
+	if (distance < m_radius + m_pExplanation->GetRadius()) {
+		return true; // 衝突が発生した
+	}
+
+	return false; // 衝突は発生していない
 }
 
 /*当たり判定*/

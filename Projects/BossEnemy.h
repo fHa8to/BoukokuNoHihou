@@ -33,6 +33,9 @@ public:
 
 	int SetColor(int color) { return m_color = color; }
 
+	//ダメージ座標を取得
+	VECTOR& GetDamgePos() { return m_damagePos; }
+
 	enum State
 	{
 		kIdle,		//待機
@@ -64,7 +67,7 @@ public:
 
 private:
 	//アニメーションの進行
-//ループしたかどうかを返す
+	//ループしたかどうかを返す
 	bool UpdateAnim(int attachNo);
 	void ChangeAnim(int animIndex);
 
@@ -99,6 +102,7 @@ private:
 	VECTOR m_mapHitColl;    //キャラクターのマップとの当たり判定
 	VECTOR m_handPos;
 	VECTOR m_swordPos;
+	VECTOR m_damagePos;
 
 
 	//進む距離
@@ -138,6 +142,9 @@ private:
 	int m_hp;
 
 	bool m_attackHit; // スキル攻撃が当たったかどうかを管理するフラグ
+
+	bool m_isSpecialAttack;
+	bool m_playingSpecialAttackSecondAnim;
 
 	bool m_moveFlag;
 	bool m_hitFlag;
