@@ -7,7 +7,7 @@
 
 namespace
 {
-	constexpr float kCameraDist = 30;
+	constexpr float kCameraDist = 40;
 
 }
 
@@ -15,13 +15,14 @@ Camera::Camera():
 	m_pos(VGet(0.0f,0.0f,0.0f)),
 	m_targetPos(VGet(0.0f, 0.0f, 0.0f)),
 	m_cameraAngle(VGet(0.0f, 0.0f, 0.0f)),
-	m_angle(DX_PI_F / 2)
+	m_angle(DX_PI_F / 2),
+	m_pitch(0.0f)
 {
 	SetCameraNearFar(5, 1600);
 
-	m_pos = VGet(0.0f, 1.0f, 10.0f);
+	m_pos = VGet(0.0f, 2.5f, 10.0f);
 
-	m_targetPos = VGet(0.0f, 0.5f, 0.0f);
+	m_targetPos = VGet(0.0f, 1.0f, 0.0f);
 
 	m_cameraAngle = VGet(0.0f, 0.0f, 0.0f);
 
@@ -38,61 +39,59 @@ void Camera::Init()
 
 void Camera::PlayerCameraUpdate(Player& player)
 {
-	//アナログスティックを使って移動
 	int analogX = 0;
 	int analogZ = 0;
 
-	GetJoypadAnalogInputRight(&analogX, &analogZ, DX_INPUT_PAD1);	
+	GetJoypadAnalogInputRight(&analogX, &analogZ, DX_INPUT_PAD1);
 	Pad::Update();
 
-
-
-	//カメラに位置を反映
-	//注視点の座標
-	VECTOR playerAimPos;
-	
-	if (player.GetSkill())
-	{
-		playerAimPos = VGet(player.GetPos().x, player.GetPos().y, player.GetPos().z);
-	}
-	else
-	{
-		playerAimPos = VGet(player.GetPos().x, player.GetPos().y - 8.0f, player.GetPos().z);
-	}
-	//ベクトルの方向(注視点,カメラのポジション)
-	VECTOR posToAim = VSub(playerAimPos, m_pos);
-
+	// カメラ角度の更新
 	if (analogX >= 10)
-	{
-		m_angle -= 0.05f;
-	}
-	if (analogX <= -10)
 	{
 		m_angle += 0.05f;
 	}
+	else if (analogX <= -10)
+	{
+		m_angle -= 0.05f;
+	}
 
-	// プレイヤーがスキルを使用しているかどうかをチェック
+	if (analogZ >= 10)
+	{
+		m_pitch -= 0.05f;
+	}
+	else if (analogZ <= -10)
+	{
+		m_pitch += 0.05f;
+	}
+
+	// 上下回転角度に制限
+	const float pitchMin = 0;
+	const float pitchMax = 85.0f * DX_PI_F / 180.0f;
+
+	if (m_pitch < pitchMin) m_pitch = pitchMin;
+	if (m_pitch > pitchMax) m_pitch = pitchMax;
+
+	// 注視点の取得
+	VECTOR playerAimPos;
 	if (player.GetSkill())
 	{
-		// スキル使用中のカメラ位置
-		m_targetPos = VAdd(player.GetPos(), VGet(0.0f, 10.0f, 0.0f));
-		m_pos.x += cosf(m_angle) * (kCameraDist + 25); // 通常より遠い位置に設定
-		m_pos.y += (kCameraDist);
-		m_pos.z += sinf(m_angle) * (kCameraDist + 25);
+		playerAimPos = VGet(player.GetPos().x, player.GetPos().y + 5.0f, player.GetPos().z);
 	}
 	else
 	{
-		// 通常時のカメラ位置
-		m_targetPos = VAdd(player.GetPos(), VGet(0.0f, 10.0f, 0.0f));
-		m_pos.x += cosf(m_angle) * kCameraDist;
-		m_pos.y += kCameraDist;
-		m_pos.z += sinf(m_angle) * kCameraDist;
+		playerAimPos = VGet(player.GetPos().x, player.GetPos().y + 5.0f, player.GetPos().z);
 	}
 
-	//現在位置にポジションを足す
-	m_pos = VAdd(m_pos, posToAim);
+	m_targetPos = VAdd(player.GetPos(), VGet(0.0f, 10.0f, 0.0f));
+
+	// カメラ距離の計算
+	float dist = kCameraDist;
+	if (player.GetSkill()) dist += 25;
+
+	// カメラ位置の算出
+	m_pos.x = playerAimPos.x + cosf(m_pitch) * cosf(m_angle) * dist;
+	m_pos.y = playerAimPos.y + sinf(m_pitch) * dist;
+	m_pos.z = playerAimPos.z + cosf(m_pitch) * sinf(m_angle) * dist;
 
 	SetCameraPositionAndTarget_UpVecY(m_pos, m_targetPos);
-
 }
-

@@ -21,12 +21,10 @@ public:
 	Player();
 	virtual ~Player();
 
-	void Load();
-	void Delete();
-
 	void Init();
 	void Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, std::shared_ptr<Explanation> m_pExplanation, Stage& stage);
 	void Draw();
+	void End();
 
 	//ƒJƒƒ‰‚Ì•ûŒü‚ğæ“¾
 	void SetCameraAngle(float angle) { m_cameraAngle = angle; }

@@ -19,7 +19,13 @@ namespace
 	constexpr float kAnimChangeFrame = 8.0f;
 	constexpr float kAnimChangeRateSpeed = 1.0f / kAnimChangeFrame;
 
-	constexpr int kModelRadius = 180.0f;
+
+	constexpr int kModelRadius = 4.0f;
+	constexpr int kModelAngle = 180.0f;
+
+	//カプセルの座標
+	constexpr int upperPart = 20;	//上部
+	constexpr int bottom = 2;		//下部
 
 }
 
@@ -29,8 +35,8 @@ Explanation::Explanation():
 	m_currentAnimNo(-1),
 	m_prevAnimNo(-1),
 	m_animBlendRate(0.0f),
-	m_angle(kModelRadius),
-	m_modelRadius(),
+	m_angle(kModelAngle),
+	m_modelRadius(kModelRadius),
 	m_pos(VGet(0.0f, 0.0f, 0.0f)),
 	m_headPos(VGet(0.0f, 0.0f, 0.0f))
 {
@@ -45,7 +51,7 @@ Explanation::~Explanation()
 
 void Explanation::Init()
 {
- m_modelHandle = MV1LoadModel(kModelCharacterFilename);
+	m_modelHandle = MV1LoadModel(kModelCharacterFilename);
     MV1SetScale(m_modelHandle, VGet(kExpansion, kExpansion, kExpansion));
 
     // 待機アニメーション（kFallingAnimIndex）を設定
@@ -73,6 +79,13 @@ void Explanation::Draw()
 {
 	//エネミーモデル描画
 	MV1DrawModel(m_modelHandle);
+#ifdef _DEBUG
+
+	//当たり判定カプセル
+	DrawCapsule3D(VGet(m_pos.x, m_pos.y + upperPart, m_pos.z), VGet(m_pos.x, m_pos.y + bottom, m_pos.z), m_modelRadius, 10, m_color, m_color, false);
+
+#endif
+
 }
 
 void Explanation::End()
@@ -98,6 +111,7 @@ bool Explanation::UpdateAnim(int attachNo)
 	{
 		now -= total;
 		isLoop = true;
+
 	}
 
 	//進めた時間の設定

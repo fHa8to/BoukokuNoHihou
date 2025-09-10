@@ -91,9 +91,8 @@ void SceneGame::Init()
 
     m_pCamera->Init();
 
-    m_pExplanation->Init();
+    //m_pExplanation->Init();
 
-    m_pPlayer->Load();
     m_pPlayer->Init();
 
     m_pEnemy->Init();
@@ -122,7 +121,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_pSkyDome->Update(m_pPlayer);
 
-    m_pExplanation->Update();
+    //m_pExplanation->Update();
 
     m_pPlayer->SetCameraAngle(m_pCamera->GetAngle());
 
@@ -159,7 +158,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_isBossEnemyTranslation = m_pBossEnemy->Translation(m_pPlayer);
 
-    m_isExplanaionAttack = m_pPlayer->IsExplanationCapsuleColliding(m_pExplanation);
+    //m_isExplanaionAttack = m_pPlayer->IsExplanationCapsuleColliding(m_pExplanation);
 
     //enemy~‚Ü‚é”ÍˆÍ
     m_isEnemyStop = m_pEnemy->IsStopColliding(m_pPlayer);
@@ -296,37 +295,44 @@ std::shared_ptr<SceneBase> SceneGame::Update()
         {
                     if (m_isBossEnemyAttack && !m_pPlayer->IsAttackHit())
                     {
-                        //HP‚ğŒ¸‚ç‚·
-                        bossEnemyHp -= 1;
-                        m_pUi->SetBossHp(bossEnemyHp);
-                        m_pPlayer->SetAttackHit(true);
-                        m_pEffectManager->DrawBossEnemyDamageEffect(m_pBossEnemy);
-
-                        if (m_pUi->GetBossHp() >= 1)
+                        if (m_pBossEnemy->GetState() != BossEnemy::kDamage)
                         {
-                            m_pBossEnemy->SetState(BossEnemy::kDamage);
+                            //HP‚ğŒ¸‚ç‚·
+                            bossEnemyHp -= 1;
+                            m_pUi->SetBossHp(bossEnemyHp);
+                            m_pPlayer->SetAttackHit(true);
+                            m_pEffectManager->DrawBossEnemyDamageEffect(m_pBossEnemy);
+
+                            if (m_pUi->GetBossHp() >= 1)
+                            {
+                                m_pBossEnemy->SetState(BossEnemy::kDamage);
+                            }
+
                         }
                     }
         }
 
-        //ƒvƒŒƒCƒ„[‚ÌUŒ‚‚ª“G‚É“–‚½‚Á‚Ä‚¢‚é
+        // ƒvƒŒƒCƒ„[‚ÌUŒ‚‚ª“G‚É“–‚½‚Á‚Ä‚¢‚é
         if (m_pPlayer->GetUnderAttack())
         {
-                    if (m_isPlayerAttack && !m_pPlayer->IsAttackHit())
+            if (m_isPlayerAttack && !m_pPlayer->IsAttackHit())
+            {
+                // ‚à‚µ“G‚ª€–Só‘Ô‚È‚çˆ—‚µ‚È‚¢
+                if (m_pEnemy->GetState() != Enemy::kDeath)
+                {
+                    // HP‚ğŒ¸‚ç‚·
+                    enemyHp -= 1;
+                    m_pEnemy->SetHp(enemyHp);
+                    m_pPlayer->SetAttackHit(true);
+                    m_pEffectManager->DrawEnemyDamageEffect(m_pEnemy);
+
+                    if (m_pEnemy->GetHp() >= 1)
                     {
-                        //HP‚ğŒ¸‚ç‚·
-                        enemyHp -= 1;
-                        m_pEnemy->SetHp(enemyHp);
-                        m_pPlayer->SetAttackHit(true);
-                        m_pEffectManager->DrawEnemyDamageEffect(m_pEnemy);
-
-                        if (m_pEnemy->GetHp() >= 1)
-                        {
-                            m_pEnemy->SetState(Enemy::kDamage);
-                        }
+                        m_pEnemy->SetState(Enemy::kDamage);
                     }
+                }
+            }
         }
-
 
 
         //“G‚ÌUŒ‚‚ª“–‚½‚Á‚Ä‚¢‚é
@@ -363,7 +369,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_pEffectManager->ResetFlags();
 
-    if (m_pUi->GetPlayerHp() == 0)
+    if (m_pUi->GetPlayerHp() == 0 )
     {
         m_playerDeath++;
         if (m_playerDeath >= 220)
@@ -440,7 +446,7 @@ void SceneGame::Draw()
     m_pEnemy->Draw(m_pPlayer);
     m_pPlayer->Draw();
 
-    m_pExplanation->Draw();
+    //m_pExplanation->Draw();
 
     m_pUi->PlayerDraw(*m_pPlayer);
 
@@ -455,7 +461,6 @@ void SceneGame::Draw()
     DrawString(0, 0, "SceneGame", 0x000000);
 
 
-  
 
     if (m_isEnemyHit)
     {
@@ -502,6 +507,7 @@ void SceneGame::Draw()
 
 
     }
+
 
     if (m_isEnemyTranslation)
     {
@@ -579,8 +585,8 @@ void SceneGame::End()
 {
 
     m_pStage->End();
-    m_pExplanation->End();
-    m_pPlayer->Delete();
+    //m_pExplanation->End();
+    m_pPlayer->End();
     m_pBossEnemy->End();
     m_pEnemy->End();
     m_pEffectManager->End();

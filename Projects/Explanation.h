@@ -50,5 +50,8 @@ private:
 	VECTOR m_pos;
 	VECTOR m_headPos;
 
+	int m_color = 0xffffff;
+
+
 };
 

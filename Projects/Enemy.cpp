@@ -184,8 +184,10 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 		}
 	}
 
-	if (m_modelHandle == -1) return;  // モデルが削除されている場合は処理をスキップ
-
+	if (m_state == kDeath)
+	{
+		return;  // 死亡中は何もしない！
+	}
 
 
 	if (!m_isAttack)
@@ -265,14 +267,17 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 
 		if (m_state == kDamage)
 		{
+			// すでに死亡状態ならダメージアニメーションを再生しない
+			if (m_state != kDeath)
+			{
 				ChangeAnim(kDamageAnimIndex);
 				m_isDamage = true;
+			}
 		}
 		else
 		{
 			m_isDamage = false;
 		}
-
 	}
 	else
 	{

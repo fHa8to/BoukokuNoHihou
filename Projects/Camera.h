@@ -35,5 +35,6 @@ private:
 
 
 	float m_angle;			//ƒJƒƒ‰Šp“x
+	float m_pitch;
 };
 

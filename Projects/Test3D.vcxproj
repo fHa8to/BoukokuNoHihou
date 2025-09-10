@@ -68,6 +68,7 @@
     <ProjectGuid>{6ae6e611-9bdb-4eb7-abf9-c8935fac924e}</ProjectGuid>
     <RootNamespace>Test3D</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>BoukokuNoHihou</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

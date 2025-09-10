@@ -32,7 +32,7 @@ namespace
 	constexpr int upperPart = 15;	//上部
 	constexpr int bottom = 2;		//下部
 
-	constexpr int kModelRadius = 8.0f;
+	constexpr int kModelRadius = 10.0f;
 
 }
 
@@ -224,7 +224,7 @@ float Skill::GetAttackAnimSpeed(int animIndex)
 	case kAttack2AnimIndex:
 		return 1.6f; // 攻撃2の再生速度
 	case kAttack3AnimIndex:
-		return 1.2f; // 攻撃3の再生速度
+		return 1.78f; // 攻撃3の再生速度
 	default:
 		return 1.5f; // デフォルトの再生速度
 	}

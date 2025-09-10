@@ -94,6 +94,8 @@ void SceneTitle::Init()
 
 
 	m_bottnHandle = LoadGraph("data/image/GameBottn1.png");
+	m_arrowHandle = LoadGraph("data/image/sankaku.png");
+	m_title = LoadGraph("data/image/title.png");
 
 	m_isSceneEnd = false;
 
@@ -269,10 +271,11 @@ void SceneTitle::Draw()
 	
 
 	m_pUi->TitleDraw();
+	DrawGraph(Game::kScreenWidth / 2 - 20 , Game::kScreenHeight/ 2 + 150, m_title, true);
 
 
 	// メニュー項目の描画
-	const int menuX = Game::kScreenWidth / 2 - 10;
+	const int menuX = Game::kScreenWidth / 2 - 40;
 	const int menuY = Game::kScreenHeight - 220;
 	const int menuSpacing = 40;
 
@@ -280,14 +283,24 @@ void SceneTitle::Draw()
 	// 描画する文字列のサイズを設定
 	SetFontSize(kFontSize);
 
-	const char* menuItems[kMenuItemCount] = { "開始", "終了" };
+	const char* menuItems[kMenuItemCount] = { "",""};
 
 	for (int i = 0; i < kMenuItemCount; ++i)
 	{
 		int color = (i == m_selectedMenuItem) ? GetColor(255, 0, 0) : GetColor(255, 255, 255);
+
+		// 選択中の項目の左に矢印画像を描画
+		if (i == m_selectedMenuItem)
+		{
+			int arrowX = menuX - 40; // 画像の位置（左に寄せる）
+			int arrowY = menuY + i * menuSpacing;
+
+			DrawGraph(arrowX, arrowY, m_arrowHandle, true); // true = 半透明対応
+		}
+
 		DrawString(menuX, menuY + i * menuSpacing, menuItems[i], color);
 	}
-	
+
 	//フェードの描画
 	SetDrawBlendMode(DX_BLENDMODE_ALPHA, m_fadeAlpha); //半透明で表示
 	DrawBox(0, 0, Game::kScreenWidth, Game::kScreenHeight, GetColor(0, 0, 0), true);

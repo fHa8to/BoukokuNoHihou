@@ -1,6 +1,11 @@
 #pragma once
 #include "SceneBase.h"
 #include "DxLib.h"
+#include <math.h>
+#include <memory>
+
+class Stage;
+
 
 class SceneOver : public SceneBase
 {
@@ -13,6 +18,8 @@ public:
 	virtual void Draw() override final;
 	virtual void End() override final;
 
+private:
+	std::shared_ptr<Stage> m_pStage;
 
 private:
 	int m_fadeAlpha;
@@ -23,7 +30,6 @@ private:
 	//ハンドル
 	int m_handle;
 
-	//カメラの座標
 	VECTOR m_cameraPos;
 
 

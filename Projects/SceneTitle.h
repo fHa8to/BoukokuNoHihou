@@ -50,6 +50,8 @@ private:
 	bool m_isCommand;
 
 	int TargetNumber;
+	int m_arrowHandle; // ← 矢印画像
+	int m_title; // ← 矢印画像
 
 	//アニメーション情報
 	int m_animIndex;

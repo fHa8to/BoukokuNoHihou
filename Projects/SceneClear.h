@@ -2,6 +2,9 @@
 #include "SceneBase.h"
 #include "DxLib.h"
 
+class Stage;
+
+
 class SceneClear : public SceneBase
 {
 public:
@@ -12,6 +15,10 @@ public:
 	virtual std::shared_ptr<SceneBase> Update() override final;
 	virtual void Draw() override final;
 	virtual void End() override final;
+
+
+private:
+	std::shared_ptr<Stage> m_pStage;
 
 private:
 

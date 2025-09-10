@@ -3,6 +3,7 @@
 #include "SceneTitle.h"
 #include "Game.h"
 #include "Pad.h"
+#include "Stage.h"
 
 
 namespace
@@ -20,8 +21,10 @@ namespace
 }
 
 
-SceneOver::SceneOver()
+SceneOver::SceneOver():
+	m_cameraPos(VGet(0.0f, 0.0f, 0.0f))
 {
+	m_pStage = std::make_shared<Stage>();
 }
 
 SceneOver::~SceneOver()
@@ -37,11 +40,21 @@ void SceneOver::Init()
 
 	m_fadeAlpha = kFadeValue;
 
+	m_pStage->Init();
+
+	m_cameraPos = VGet(0.0f, 20.0f, 100.0f);
+
+	// カメラの初期位置と向きを設定
+	SetCameraPositionAndTarget_UpVecY(m_cameraPos, VGet(0, 0, 0));
+
+	// カメラの近クリップ面と遠クリップ面を設定
+	SetCameraNearFar(1.0f, 100000.0f); // 近クリップ面を1.0fに設定
 
 }
 
 std::shared_ptr<SceneBase> SceneOver::Update()
 {
+	m_pStage->Update();
 
 	if (Pad::IsTrigger(PAD_INPUT_1))	// パッドの1ボタンorキーボードのZキー
 	{
@@ -86,15 +99,16 @@ std::shared_ptr<SceneBase> SceneOver::Update()
 
 void SceneOver::Draw()
 {
+	m_pStage->Draw();
 
 #ifdef _DEBUG
 
 	DrawString(0, 0, "SceneOver", GetColor(255, 255, 255));
 
 #endif
-	DrawGraph(0, 0, m_handle, true);
 
-	DrawString(Game::kScreenWidth / 2 - 150, Game::kScreenHeight - 220, "Aボタンでタイトルへ", GetColor(255, 255, 255));
+	DrawGraph(Game::kScreenWidth / 2 - 270, Game::kScreenHeight / 3, m_handle, true);
+
 
 	//フェードの描画
 	SetDrawBlendMode(DX_BLENDMODE_ALPHA, m_fadeAlpha); //半透明で表示
@@ -106,4 +120,5 @@ void SceneOver::Draw()
 
 void SceneOver::End()
 {
+	m_pStage->End();
 }

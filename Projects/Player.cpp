@@ -127,22 +127,12 @@ Player::~Player()
 {
 }
 
-void Player::Load()
+
+void Player::Init()
 {
 	m_modelHandle = MV1LoadModel(kModelFilename);
 	m_modelHandle1 = MV1LoadModel(kModelFilename1);
 	m_handle = LoadGraph("data/image/GameUI.png");
-}
-
-void Player::Delete()
-{
-	MV1DeleteModel(m_modelHandle);
-
-
-}
-
-void Player::Init()
-{
 
 	//プレイヤースピード初期化
 	m_speed = kMaxSpeed;
@@ -402,6 +392,12 @@ void Player::Draw()
 #endif // _DEBUG
 
 
+}
+
+void Player::End()
+{
+	MV1DeleteModel(m_modelHandle);
+	m_modelHandle = -1;
 }
 
 bool Player::UpdateAnim(int attachNo)
@@ -742,14 +738,14 @@ void Player::DeathAnim()
 bool Player::IsExplanationCapsuleColliding(std::shared_ptr<Explanation> m_pExplanation)
 {
 	// プレイヤーと敵のカプセルの端点を計算
-	VECTOR topA = m_attackPos;
-	VECTOR bottomA = m_handPos;
-	VECTOR topB = m_pExplanation->GetPos();
-	VECTOR bottomB = m_pExplanation->GetHeadPos();
+	m_topA = { m_pos.x, m_pos.y + upperPart, m_pos.z };
+	m_bottomA = { m_pos.x, m_pos.y + bottom, m_pos.z };
+	m_topB = { m_pExplanation->GetPos().x, m_pExplanation->GetPos().y + upperPart, m_pExplanation->GetPos().z };
+	m_bottomB = { m_pExplanation->GetPos().x, m_pExplanation->GetPos().y + bottom, m_pExplanation->GetPos().z };
 
 	// カプセルの中心点
-	VECTOR centerA = { (bottomA.x + topA.x) / 2, (bottomA.y + topA.y) / 2, (bottomA.z + topA.z) / 2 };
-	VECTOR centerB = { (bottomB.x + topB.x) / 2, (bottomB.y + topB.y) / 2, (bottomB.z + topB.z) / 2 };
+	VECTOR centerA = { (m_bottomA.x + m_topA.x) / 2, (m_bottomA.y + m_topA.y) / 2, (m_bottomA.z + m_topA.z) / 2 };
+	VECTOR centerB = { (m_bottomB.x + m_topB.x) / 2, (m_bottomB.y + m_topB.y) / 2, (m_bottomB.z + m_topB.z) / 2 };
 
 	// 各カプセルの端点間の最短距離を計算する
 	auto capsuleSegmentDistance = [](VECTOR bottom1, VECTOR top1, VECTOR bottom2, VECTOR top2) {
@@ -763,7 +759,7 @@ bool Player::IsExplanationCapsuleColliding(std::shared_ptr<Explanation> m_pExpla
 		float b = dir1.x * dir2.x + dir1.y * dir2.y + dir1.z * dir2.z;
 		float c = dir2.x * dir2.x + dir2.y * dir2.y + dir2.z * dir2.z;
 		float d = dir1.x * diff.x + dir1.y * diff.y + dir1.z * diff.z;
-		float e = dir2.x * diff.x + dir2.y * diff.y + diff.z * diff.z;
+		float e = dir2.x * diff.x + dir2.y * diff.y + dir2.z * diff.z;
 
 		float det = a * c - b * b;
 		if (det == 0.0f) {
@@ -786,10 +782,22 @@ bool Player::IsExplanationCapsuleColliding(std::shared_ptr<Explanation> m_pExpla
 		};
 
 	// プレイヤーのカプセルと敵のカプセルの端点間の最短距離を計算
-	float distance = capsuleSegmentDistance(bottomA, topA, bottomB, topB);
+	float distance = capsuleSegmentDistance(m_bottomA, m_topA, m_bottomB, m_topB);
 
 	// 衝突判定
-	if (distance < m_radius + m_pExplanation->GetRadius()) {
+	if (distance < m_modelRadius + m_pExplanation->GetRadius()) {
+		// 衝突が発生した場合、反発ベクトルを計算してめり込みを解消
+		float overlap = m_modelRadius + m_pExplanation->GetRadius() - distance;
+
+		// 衝突方向の単位ベクトル
+		VECTOR delta = { centerA.x - centerB.x, centerA.y - centerB.y, centerA.z - centerB.z };
+		float norm = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+		delta = { delta.x / norm, delta.y / norm, delta.z / norm };
+
+		// プレイヤーの位置を修正
+		m_pos.x += delta.x * overlap * 0.5f;
+		m_pos.z += delta.z * overlap * 0.5f;
+
 		return true; // 衝突が発生した
 	}
 
@@ -1167,6 +1175,7 @@ bool Player::IsSkillBossAttackColliding(std::shared_ptr<BossEnemy> m_pBossEnemy)
 
 	return false; // 衝突は発生していない
 }
+
 void Player::CorrectPosition(Stage& stage)
 {
 	int j;
@@ -1377,11 +1386,13 @@ void Player::CorrectPosition(Stage& stage)
 			//一番高い床ポリゴンにぶつける為の判定用変数を初期化
 			MaxY = 0.0f;
 
+
 			//床ポリゴンの数だけ繰り返し
 			for (int i = 0; i < m_yukaNum; i++)
 			{
 				//i番目の床ポリゴンのアドレスを床ポリゴンポインタ配列から取得
 				Poly = Yuka[i];
+
 
 				//ジャンプ中の場合は頭の先から足先より少し低い位置の間で当たっているかを判定
 				LineRes = HitCheck_Line_Triangle(VAdd(m_mapHitColl, VGet(0.0f, upperPart, 0.0f)), m_mapHitColl,
@@ -1406,7 +1417,7 @@ void Player::CorrectPosition(Stage& stage)
 				//当たった場合
 
 				//接触したポリゴンで一番高いＹ座標をプレイヤーのＹ座標にする
-				m_mapHitColl.y = MaxY;
+				m_pos.y = MaxY;
 
 				//Ｙ軸方向の移動速度は０に
 				m_move.y = 0.0f;

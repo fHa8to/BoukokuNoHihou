@@ -160,7 +160,7 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 	//死んだ時
 	if (m_state == kDeath)
 	{
-
+		m_isAttack = false;
 		if (!m_isDead)
 		{
 			m_isDead = true;
@@ -169,6 +169,12 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 		}
 
 	}
+
+	if (m_state == kDeath)
+	{
+		return;  // 死亡中は何もしない！
+	}
+
 
 	if (!m_isAttack)
 	{
@@ -264,8 +270,12 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 
 		if (m_state == kDamage)
 		{
-			ChangeAnim(kDamageAnimIndex);
-			m_isDamage = true;
+			// すでに死亡状態ならダメージアニメーションを再生しない
+			if (m_state != kDeath)
+			{
+				ChangeAnim(kDamageAnimIndex);
+				m_isDamage = true;
+			}
 		}
 		else
 		{
