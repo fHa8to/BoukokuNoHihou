@@ -80,7 +80,7 @@ public:
 
 private:
 	//アニメーションの進行
-//ループしたかどうかを返す
+	//ループしたかどうかを返す
 	bool UpdateAnim(int attachNo);
 	void ChangeAnim(int animIndex);
 

@@ -5,6 +5,7 @@
 #include <memory>
 
 class Stage;
+class Ui;
 
 
 class SceneOver : public SceneBase
@@ -19,17 +20,27 @@ public:
 	virtual void End() override final;
 
 private:
+	bool UpdateAnim(int attachNo);
+
 	std::shared_ptr<Stage> m_pStage;
+	std::shared_ptr<Ui> m_pUi;
+
 
 private:
+	//モデルハンドル
+	int m_modelHandle;
+
 	int m_fadeAlpha;
 
 	bool m_isSceneEnd;
 	bool m_isCommand;
 
-	//ハンドル
-	int m_handle;
+	//アニメーション情報
+	int m_animIndex;
+	int m_currentAnimNo;	//現在のアニメーション
 
+
+	VECTOR m_pos;
 	VECTOR m_cameraPos;
 
 

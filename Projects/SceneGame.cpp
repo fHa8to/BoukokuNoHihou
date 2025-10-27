@@ -81,6 +81,7 @@ SceneGame::~SceneGame()
 
 void SceneGame::Init()
 {
+    
     m_isSceneEnd = false;
 
     m_fadeAlpha = kFadeValue;
@@ -91,7 +92,7 @@ void SceneGame::Init()
 
     m_pCamera->Init();
 
-    //m_pExplanation->Init();
+    m_pExplanation->Init();
 
     m_pPlayer->Init();
 
@@ -121,7 +122,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_pSkyDome->Update(m_pPlayer);
 
-    //m_pExplanation->Update();
+    m_pExplanation->Update(m_pPlayer);
 
     m_pPlayer->SetCameraAngle(m_pCamera->GetAngle());
 
@@ -136,6 +137,8 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     m_pUi->Update();
 
     m_pEffectManager->Update();
+
+    m_pEffectManager->DrawArrowEffect();
 
     //ƒvƒŒƒCƒ„[‚Æ“G‚Ì“–‚½‚è”»’è
     m_isEnemyHit = m_pPlayer->IsEnemyCapsuleColliding(m_pEnemy);
@@ -158,7 +161,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
     m_isBossEnemyTranslation = m_pBossEnemy->Translation(m_pPlayer);
 
-    //m_isExplanaionAttack = m_pPlayer->IsExplanationCapsuleColliding(m_pExplanation);
+    m_isExplanaionAttack = m_pPlayer->IsExplanationCapsuleColliding(m_pExplanation);
 
     //enemyŽ~‚Ü‚é”ÍˆÍ
     m_isEnemyStop = m_pEnemy->IsStopColliding(m_pPlayer);
@@ -192,7 +195,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
     {
         if (m_isBossEnemyTranslation)
         {
-            m_pBossEnemy->SetState(BossEnemy::kRun);
+            m_pBossEnemy->SetState(BossEnemy::kWalk);
         }
         else
         {
@@ -394,7 +397,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
         m_bossEnemyDeath++;
         m_pBossEnemy->SetState(BossEnemy::kDeath);
 
-        if (m_bossEnemyDeath >= 220)
+        if (m_bossEnemyDeath >= 250)
         {
             return std::make_shared<SceneClear>();
         }
@@ -429,6 +432,7 @@ std::shared_ptr<SceneBase> SceneGame::Update()
 
 void SceneGame::Draw()
 {
+
     m_pSkyDome->Draw();
     m_pStage->Draw();
 
@@ -446,7 +450,7 @@ void SceneGame::Draw()
     m_pEnemy->Draw(m_pPlayer);
     m_pPlayer->Draw();
 
-    //m_pExplanation->Draw();
+    m_pExplanation->Draw();
 
     m_pUi->PlayerDraw(*m_pPlayer);
 
@@ -582,10 +586,10 @@ void SceneGame::Draw()
 }
 
 void SceneGame::End()
-{
-
+{ 
+    
     m_pStage->End();
-    //m_pExplanation->End();
+    m_pExplanation->End();
     m_pPlayer->End();
     m_pBossEnemy->End();
     m_pEnemy->End();

@@ -39,9 +39,14 @@ public:
 	//ボスのダメージエフェクト
 	void DrawBossEnemyDamageEffect(std::shared_ptr<BossEnemy> m_pBossEnemy);
 
+	void DrawArrowEffect();
+
+	bool IsEffekseerEffectPlaying(int handle);
 
 private:
 
+	//表示情報
+	VECTOR m_pos;
 
 
 	//プレイヤーがダメージを受けた時のエフェクト
@@ -59,6 +64,8 @@ private:
 	//ボスの攻撃を使った時のエフェクト
 	int m_bossEnemySkillEffectHandle;
 
+	//矢印のエフェクト
+	int m_arrowEffecthandle;
 
 
 	//プレイヤーがダメージを受けた時エフェクトを再生する時間
@@ -71,13 +78,16 @@ private:
 	float m_bossEnemyDamageEffectTime;
 
 	//プレイヤーのスキルを使った時のエフェクトを再生する時間
-	int m_playerSkillEffectTime;
+	float m_playerSkillEffectTime;
 
 	//ボスの攻撃を使った時のエフェクトを再生する時間
-	int m_bossEnemySkillEffectTime;
+	float m_bossEnemySkillEffectTime;
 
 
+	float m_arrowEffectTime;
 
+
+	float m_arrowTime;
 
 
 
@@ -98,7 +108,7 @@ private:
 	bool m_isBossEnemySkillEffect;
 
 
-
+	bool m_isArrowEffect;
 
 };
 

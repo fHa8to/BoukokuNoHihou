@@ -1,9 +1,12 @@
 #pragma once
 #include "SceneBase.h"
 #include "DxLib.h"
+#include <math.h>
+#include <memory>
+
 
 class Stage;
-
+class Ui;
 
 class SceneClear : public SceneBase
 {
@@ -18,19 +21,27 @@ public:
 
 
 private:
+	bool UpdateAnim(int attachNo);
+
 	std::shared_ptr<Stage> m_pStage;
+	std::shared_ptr<Ui> m_pUi;
+
 
 private:
+	//モデルハンドル
+	int m_modelHandle;
 
 	int m_fadeAlpha;
 
 	bool m_isSceneEnd;
 	bool m_isCommand;
 
-	//ハンドル
-	int m_handle;
+	//アニメーション情報
+	int m_animIndex;
+	int m_currentAnimNo;	//現在のアニメーション
 
-	//カメラの座標
+
+	VECTOR m_pos;
 	VECTOR m_cameraPos;
 
 

@@ -25,7 +25,6 @@ private:
 	//アニメーションの進行
 	//ループしたかどうかを返す
 	bool UpdateAnim(int attachNo);
-	void ChangeAnim(int animIndex);
 
 
 	std::shared_ptr<Stage> m_pStage;
@@ -50,17 +49,12 @@ private:
 	bool m_isCommand;
 
 	int TargetNumber;
-	int m_arrowHandle; // ← 矢印画像
-	int m_title; // ← 矢印画像
+	int m_arrowHandle; 
+	int m_title; 
 
 	//アニメーション情報
 	int m_animIndex;
 	int m_currentAnimNo;	//現在のアニメーション
-	int m_prevAnimNo;		//変更前のアニメーション
-	float m_animBlendRate;	//アニメーション合成割合
-	float m_animSpeed;		//アニメーション速度
-	bool m_isStopEnd;	// アニメーション最後で停止させる
-	int m_runFrame;
 
 	//カメラの座標
 	VECTOR m_cameraPos;

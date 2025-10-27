@@ -158,8 +158,6 @@ void Player::Init()
 void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> m_pBossEnemy, std::shared_ptr<Ui> m_pUi, std::shared_ptr<Explanation> m_pExplanation, Stage& stage)
 {
 
-	Pad::Update();
-
 	//アニメーションの切り替え
 	if (m_prevAnimNo != -1)
 	{
@@ -398,6 +396,8 @@ void Player::End()
 {
 	MV1DeleteModel(m_modelHandle);
 	m_modelHandle = -1;
+	MV1DeleteModel(m_modelHandle1);
+	m_modelHandle1 = -1;
 }
 
 bool Player::UpdateAnim(int attachNo)

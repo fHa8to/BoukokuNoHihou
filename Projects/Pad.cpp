@@ -5,6 +5,7 @@ namespace
 {
     int lastPad = 0;
     int nowPad = 0;
+    int triggerPad = 0;
 }
 
 
@@ -15,6 +16,7 @@ namespace Pad
         lastPad = nowPad;
 
         nowPad = GetJoypadInputState(DX_INPUT_KEY_PAD1);
+
     }
 
     bool Pad::IsPress(int key)

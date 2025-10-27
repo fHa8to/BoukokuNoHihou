@@ -14,18 +14,10 @@
 
 namespace
 {
-	//フォントのサイズ
-	constexpr int kFontSize = 32;
-
-	//文字の位置
-	constexpr int kFontPosX = 500;
-	constexpr int kFontPosY = 500;
-
-
-	//モデルの初期位置
-	constexpr float kPosX = 0.0f;
-	constexpr float kPosY = 0.0f;
-	constexpr float kPosZ = 0.0f;
+	//Enemyモデル
+	const char* const kEnemyModel = "data/model/skeleton/skeleton1.mv1";
+	//BGMのファイル名
+	const char* const kBgmButton = "data/sound/Titledecide.mp3";
 
 	//モデルのサイズ変更
 	constexpr float kExpansion = 0.1f;
@@ -46,8 +38,6 @@ namespace
 	//カメラ情報
 	constexpr int kCameraPosY = 20;
 
-	//BGMのファイル名
-	const char* const kBgmButton = "data/sound/Titledecide.mp3";
 
 	//メニュー項目数
 	constexpr int kMenuItemCount = 2;
@@ -56,12 +46,9 @@ namespace
 SceneTitle::SceneTitle() :
 	m_isCommand(false),
 	m_bottnHandle(0),
-	m_modelHandle(MV1LoadModel("data/model/skeleton/skeleton1.mv1")),
+	m_modelHandle(),
 	m_fadeAlpha(0),
 	m_currentAnimNo(-1),
-	m_prevAnimNo(-1),
-	m_animBlendRate(0.0f),
-	m_animSpeed(0.0f),
 	m_isSceneEnd(false),
 	m_pos(VGet(0.0f, 0.0f, 0.0f)),
 	m_cameraPos(VGet(0.0f, 0.0f, 0.0f)),
@@ -74,8 +61,6 @@ SceneTitle::SceneTitle() :
 	m_pos = VGet(-121.0f, 120.0f, -137.0f);
 	m_move = VGet(0.0f, 0.0f, 0.0f);
 
-	// 描画する文字列のサイズを設定
-	SetFontSize(kFontSize);
 }
 
 SceneTitle::~SceneTitle()
@@ -87,11 +72,10 @@ void SceneTitle::Init()
 {
 	m_pStage->Init();
 
+	m_modelHandle = MV1LoadModel(kEnemyModel);
+
 	//待機アニメーションを設定
 	m_currentAnimNo = MV1AttachAnim(m_modelHandle, kIdleAnimIndex, -1, false);
-	m_prevAnimNo = -1;
-	m_animBlendRate = 1.0f;
-
 
 	m_bottnHandle = LoadGraph("data/image/GameBottn1.png");
 	m_arrowHandle = LoadGraph("data/image/sankaku.png");
@@ -280,8 +264,6 @@ void SceneTitle::Draw()
 	const int menuSpacing = 40;
 
 
-	// 描画する文字列のサイズを設定
-	SetFontSize(kFontSize);
 
 	const char* menuItems[kMenuItemCount] = { "",""};
 
@@ -322,22 +304,16 @@ bool SceneTitle::UpdateAnim(int attachNo)
 
 	//アニメーションを進行させる
 	float now = MV1GetAttachAnimTime(m_modelHandle, attachNo);	//現在の再生カウントを取得
-	now += 0.5f * m_animSpeed; // アニメーションを再生速度に応じて進める
+	now += 0.1f;	//アニメーション進める
 
 	//現在再生中のアニメーションの総カウントを取得
 	float total = MV1GetAttachAnimTotalTime(m_modelHandle, attachNo);
 	bool isLoop = false;
 	if (now >= total)
 	{
-		if (m_isStopEnd)
-		{
-			now = total;
-		}
-		else
-		{
-			now -= total;
-		}
+		now -= total;
 		isLoop = true;
+
 	}
 
 	//進めた時間の設定
@@ -345,31 +321,3 @@ bool SceneTitle::UpdateAnim(int attachNo)
 
 	return isLoop;
 }
-
-void SceneTitle::ChangeAnim(int animIndex)
-{
-	//さらに古いアニメーションがアタッチされている場合はこの時点で削除しておく
-	if (m_prevAnimNo != -1)
-	{
-		MV1DetachAnim(m_modelHandle, m_prevAnimNo);
-	}
-
-	//現在再生中の待機アニメーションは変更前のアニメーション扱いに
-	m_prevAnimNo = m_currentAnimNo;
-
-	//変更後のアニメーションとして攻撃アニメーションを改めて設定する
-	m_currentAnimNo = MV1AttachAnim(m_modelHandle, animIndex, -1, false);
-
-	//切り替えの瞬間は変更後のアニメーションが再生される
-	m_animBlendRate = 0.0f;
-
-	//変更前のアニメーション100%
-	MV1SetAttachAnimBlendRate(m_modelHandle, m_prevAnimNo, 1.0f - m_animBlendRate);
-	//変更後のアニメーション0%
-	MV1SetAttachAnimBlendRate(m_modelHandle, m_currentAnimNo, m_animBlendRate);
-
-	//// 現在のステートに応じたアニメーションの再生速度を設定
-	//m_animSpeed = m_animSpeedMap[m_nowState];
-
-}
-

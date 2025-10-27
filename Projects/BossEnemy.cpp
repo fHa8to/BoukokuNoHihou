@@ -42,7 +42,7 @@ namespace
 
 	constexpr int kModelRadius = 4.0f;
 	constexpr int kAttackRadius = 2.0f;
-	constexpr int kDiscoveryRadius = 80.0f;
+	constexpr int kDiscoveryRadius = 210.0f;
 	constexpr int kStopRadius = 15.0f;
 
 }
@@ -75,7 +75,8 @@ BossEnemy::BossEnemy():
 	m_state(kIdle),
 	m_kabeNum(0),
 	m_yukaNum(0),
-	m_attackDelayCounter(0)
+	m_attackDelayCounter(0),
+	m_retreatCooldown(0)
 {
 	m_pos = VGet(200.0f, 300.0f, -60.0f);
 	m_move = VGet(0.0f, 0.0f, 0.0f);
@@ -88,10 +89,12 @@ BossEnemy::BossEnemy():
 	m_animSpeedMap[State::kDamage] = 1.0f;
 	m_animSpeedMap[State::kDeath] = 0.8f;
 
+
 }
 
 BossEnemy::~BossEnemy()
 {
+
 }
 
 
@@ -152,10 +155,28 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 	//重力
 	m_move.y -= 0.1;
 
-	if (m_attackDelayCounter > 0)
-	{
-		m_attackDelayCounter--;
-	}
+	float rotX = DX_PI / 1.0f;
+	float rotY = DX_PI / 2.0f;
+	float rotZ = DX_PI / 2.0f;
+
+	//回転行列を作成
+	MATRIX rotMatrixX = MGetRotX(rotX);
+	MATRIX rotMatrixY = MGetRotY(rotY);
+	MATRIX rotMatrixZ = MGetRotZ(rotZ);
+
+	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
+
+	//手のワールドマトリックスを取得
+	MATRIX handWorldMatrix = MV1GetFrameLocalWorldMatrix(m_modelHandle, 66);
+
+	//回転を手のマトリックスに適用
+	MATRIX swordMatrix = MMult(rotationMatrix, handWorldMatrix);
+
+	//剣モデルにマトリックスを設定
+	MV1SetMatrix(m_modelHandle1, swordMatrix);
+
+
+
 	
 	//死んだ時
 	if (m_state == kDeath)
@@ -176,35 +197,43 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 	}
 
 
+
 	if (!m_isAttack)
 	{
-		//攻撃の時
+		// カウンターを減らす
+		if (m_attackDelayCounter > 0)
+		{
+			m_attackDelayCounter--;
+		}
+
+
+
+		// 攻撃状態かつプレイヤーのHPがある場合
 		if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 		{
-			// プレイヤーとの方向ベクトルを計算
-			VECTOR toPlayer = VSub(m_pPlayer->GetPos(), m_pos);
-			float targetAngle = atan2f(-toPlayer.x, -toPlayer.z); // プレイヤー方向の角度
-
-			// 現在の角度と目標角度の差を計算
-			float angleDiff = targetAngle - m_angle.y;
-
-			// 差を -π ～ π に正規化
-			while (angleDiff < -DX_PI_F) angleDiff += DX_PI_F * 2.0f;
-			while (angleDiff > DX_PI_F) angleDiff -= DX_PI_F * 2.0f;
-
-			// 角度を補間（スムーズに回転）
-			float turnSpeed = 0.1f; // この値で回転速度を調整
-			m_angle.y += angleDiff * turnSpeed;
-
-			// モデルの回転を反映
-			MV1SetRotationXYZ(m_modelHandle, VGet(0.0f, m_angle.y + DX_PI_F, 0.0f));
-
-
-			if (m_attackDelayCounter == 0)
+			if(m_attackDelayCounter <= 0)
 			{
-					ChangeAnim(GetRandomAttackAnimIndex());
-					m_isAttack = true;
-					m_attackDelayCounter = kAttackDelayDuration; // 攻撃遅延カウンタをリセット
+				// 最初の攻撃
+				ChangeAnim(GetRandomAttackAnimIndex());
+				m_isAttack = true;
+
+				// 次回の攻撃までのランダムな遅延
+				const int minDelay = 150;
+				const int maxDelay = 200;
+				m_attackDelayCounter = rand() % (maxDelay - minDelay + 1) + minDelay;
+			
+
+			}
+
+		}
+		else
+		{
+			if (m_attackDelayCounter <= 0)
+			{
+				// 次回の攻撃までのランダムな遅延
+				const int minDelay = 100;
+				const int maxDelay = 150;
+				m_attackDelayCounter = rand() % (maxDelay - minDelay + 1) + minDelay;
 
 			}
 		}
@@ -227,7 +256,7 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 		}
 
 		//追いかけている
-		if (m_state == kRun || m_state == kWalk)
+		if (m_state == kWalk)
 		{
 
 			//プレイヤーの座標
@@ -235,38 +264,50 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 
 			//プレイヤーの座標に移動
 			toTarget = VNorm(toTarget);
-			m_distance.x = toTarget.x * kSpeed;
-			m_distance.y = 0.0f;
-			m_distance.z = toTarget.z * kSpeed;
+
+			
+				// 通常の前進移動
+				m_distance.x = toTarget.x * kSpeed;
+				m_distance.y = 0.0f;
+				m_distance.z = toTarget.z * kSpeed;
 
 
-			m_pos = VAdd(m_pos, m_distance);
+				m_pos = VAdd(m_pos, m_distance);
 
 
-			//モデルの向きを変える
-			VECTOR SubVector = VSub(m_pPlayer->GetPos(), m_pos);
+				//モデルの向きを変える
+				VECTOR SubVector = VSub(m_pPlayer->GetPos(), m_pos);
 
-			// atan を使用して角度を取得
-			m_angle.y = atan2f(-SubVector.x, -SubVector.z);
+				// atan を使用して角度を取得
+				m_angle.y = atan2f(-SubVector.x, -SubVector.z);
 
 
 
-			//プレイヤーの方向を向く
-			MV1SetRotationXYZ(m_modelHandle, VGet(0.0f, m_angle.y + DX_PI_F, 0.0f));
+				//プレイヤーの方向を向く
+				MV1SetRotationXYZ(m_modelHandle, VGet(0.0f, m_angle.y + DX_PI_F, 0.0f));
 
-			if (!m_isRnu)
-			{
-				ChangeAnim(kWalkAnimIndex);
-			}
-			m_animIndex = kWalkAnimIndex;
+				// プレイヤーとの距離でアニメーションを分岐
+				if (IsStopColliding(m_pPlayer))
+				{
+					// 停止範囲に入ったらアイドルアニメーションに切り替える
+					if (m_animIndex != kIdleAnimIndex)
+					{
+						ChangeAnim(kIdleAnimIndex);
+						m_animIndex = kIdleAnimIndex;
+					}
+				}
+				else
+				{
+					// 歩きアニメーション（既に再生中かチェック）
+					if (m_animIndex != kWalkAnimIndex)
+					{
+						ChangeAnim(kWalkAnimIndex);
+						m_animIndex = kWalkAnimIndex;
+					}
 
-			m_isRnu = true;
-
+				}
 		}
-		else
-		{
-			m_isRnu = false;
-		}
+
 
 		if (m_state == kDamage)
 		{
@@ -281,6 +322,7 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 		{
 			m_isDamage = false;
 		}
+
 	}
 	else
 	{
@@ -321,26 +363,6 @@ void BossEnemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_
 	//エネミーモデルの回転値
 	MV1SetRotationXYZ(m_modelHandle, m_angle);
 
-	float rotX = DX_PI / 1.0f;
-	float rotY = DX_PI / 2.0f;
-	float rotZ = DX_PI / 2.0f;
-
-	//回転行列を作成
-	MATRIX rotMatrixX = MGetRotX(rotX);
-	MATRIX rotMatrixY = MGetRotY(rotY);
-	MATRIX rotMatrixZ = MGetRotZ(rotZ);
-
-	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
-
-	//手のワールドマトリックスを取得
-	MATRIX handWorldMatrix = MV1GetFrameLocalWorldMatrix(m_modelHandle, 66);
-
-	//回転を手のマトリックスに適用
-	MATRIX swordMatrix = MMult(rotationMatrix, handWorldMatrix);
-
-	//剣モデルにマトリックスを設定
-	MV1SetMatrix(m_modelHandle1, swordMatrix);
-
 }
 
 void BossEnemy::Draw(std::shared_ptr<Player> m_pPlayer)
@@ -361,7 +383,7 @@ void BossEnemy::Draw(std::shared_ptr<Player> m_pPlayer)
 	DrawCapsule3D(m_handPos, m_attackPos, m_attackRadius, 8, 0xffffff, 0xffffff, false);
 
 	//索敵範囲球
-	DrawSphere3D(VAdd(m_pos, VGet(0, 0, 0)), m_discoveryRadius, 10, m_color, m_color, false);
+	DrawSphere3D(VAdd(VGet(200, 350, -65), VGet(0, 0, 0)), m_discoveryRadius, 10, m_color, m_color, false);
 
 	//止まる範囲球
 	DrawSphere3D(VAdd(m_pos, VGet(0, 0, 0)), m_stopRadius, 10, 0xffffff, 0xffffff, false);
@@ -376,14 +398,15 @@ void BossEnemy::End()
 {
 	MV1DeleteModel(m_modelHandle);
 	m_modelHandle = -1;
-
+	MV1DeleteModel(m_modelHandle1);
+	m_modelHandle1 = -1;
 }
 
 bool BossEnemy::Translation(std::shared_ptr<Player> m_pPlayer)
 {
-	float delX = (m_pos.x - m_pPlayer->GetPos().x) * (m_pos.x - m_pPlayer->GetPos().x);
-	float delY = (m_pos.y - m_pPlayer->GetPos().y) * (m_pos.y - m_pPlayer->GetPos().y);
-	float delZ = (m_pos.z - m_pPlayer->GetPos().z) * (m_pos.z - m_pPlayer->GetPos().z);
+	float delX = (200 - m_pPlayer->GetPos().x) * (200 - m_pPlayer->GetPos().x);
+	float delY = (350 - m_pPlayer->GetPos().y) * (350 - m_pPlayer->GetPos().y);
+	float delZ = (-65 - m_pPlayer->GetPos().z) * (-65 - m_pPlayer->GetPos().z);
 
 	//球と球の距離
 	float Distance = sqrt(delX + delY + delZ);
@@ -704,7 +727,7 @@ void BossEnemy::CorrectPosition(Stage& stage)
 				//当たった場合
 
 				//接触したポリゴンで一番高いＹ座標をプレイヤーのＹ座標にする
-				m_mapHitColl.y = MaxY;
+				m_pos.y = MaxY;
 
 				//Ｙ軸方向の移動速度は０に
 				m_move.y = 0.0f;

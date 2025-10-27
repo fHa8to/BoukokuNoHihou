@@ -13,7 +13,11 @@ public:
 	void Init();
 	void Update();
 	void TitleDraw();
+	void ClearDraw();
+	void OverDraw();
 	void PlayerDraw(const Player& player);
+	void ExplanationDraw();
+	void ButtonDraw();
 	void BossDraw();
 	void End();
 
@@ -31,7 +35,10 @@ public:
 
 
 private:
-	int TitleHandle;
+
+	int m_TitleHandle;
+	int m_ClearHandle;
+	int m_OverHandle;
 
 	//ƒ{ƒ^ƒ“
 	int m_modelHandle;
@@ -39,12 +46,14 @@ private:
 	int m_buttonAHandle;
 	int m_buttonBHandle;
 	int m_buttonXHandle;
+	int m_buttonYHandle;
 	int m_buttonRBHandle;
+	int m_explanationHandle;
 
 	int m_skillHandle;
 
-	int PlayerHandle;
-	int BossHandle;
+	int m_PlayerHandle;
+	int m_BossHandle;
 	int PlayerHp;
 	int BossHp;
 	int Skill;

@@ -118,6 +118,9 @@ private:
 	int TargetNumber;
 
 
+	int m_retreatCooldown;
+
+
 	//アニメーションフラグ
 	int m_isIdle;
 	int m_isAttack;
@@ -125,7 +128,6 @@ private:
 	int m_isRnu;
 	int m_isDamage;
 	int m_isDead;
-
 
 	//State変数
 	State m_state;

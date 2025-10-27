@@ -4,6 +4,8 @@
 #include <memory>
 #include <unordered_map>
 
+class Player;
+class Ui;
 
 class Explanation
 {
@@ -12,7 +14,7 @@ public:
 	virtual ~Explanation();
 
 	void Init();
-	void Update();
+	void Update(std::shared_ptr<Player> m_pPlayer);
 	void Draw();
 	void End();
 
@@ -26,16 +28,25 @@ public:
 	float GetRadius() { return m_modelRadius; }
 
 
+	bool Translation(std::shared_ptr<Player> m_pPlayer);
+
+
 private:
 	//アニメーションの進行
 //ループしたかどうかを返す
 	bool UpdateAnim(int attachNo);
 
+	std::shared_ptr<Ui> m_pUi;
+
+
 private:
 	//モデルハンドル
 	int m_modelHandle;
 
+
 	float m_modelRadius;
+	float m_discoveryRadius;
+
 
 	//アニメーション情報
 	int m_animIndex;
@@ -43,6 +54,9 @@ private:
 	int m_prevAnimNo;		//変更前のアニメーション
 	float m_animBlendRate;	//アニメーション合成割合
 	float m_animSpeed;		//アニメーション速度
+
+	bool m_isRange;
+	bool m_isButton;
 
 	float m_angle;
 

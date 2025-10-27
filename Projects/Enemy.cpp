@@ -10,8 +10,7 @@
 //スピード
 #define MOVE_SPEED 0.3f
 
-//この距離まで近づいたら次のポイントへ
-#define CHECK_LENGTH 2.0f
+
 
 namespace
 {
@@ -48,7 +47,7 @@ namespace
 	constexpr int kModelRadius = 4.0f;
 	constexpr int kAttackRadius = 1.0f;
 	constexpr int kDiscoveryRadius = 50.0f;
-	constexpr int kStopRadius = 5.0f;
+	constexpr int kStopRadius = 6.0f;
 
 }
 
@@ -159,12 +158,27 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 	//重力
 	m_move.y -= 0.1;
 
+	float rotX = DX_PI / 1.0f;
+	float rotY = DX_PI / 2.0f;
+	float rotZ = DX_PI / 2.0f;
 
-	// 攻撃の遅延処理
-	if (m_attackDelayCounter > 0)
-	{
-		m_attackDelayCounter--;
-	}
+	//回転行列を作成
+	MATRIX rotMatrixX = MGetRotX(rotX);
+	MATRIX rotMatrixY = MGetRotY(rotY);
+	MATRIX rotMatrixZ = MGetRotZ(rotZ);
+
+	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
+
+	//手のワールドマトリックスを取得
+	MATRIX handWorldMatrix = MV1GetFrameLocalWorldMatrix(m_modelHandle, 66);
+
+	//回転を手のマトリックスに適用
+	MATRIX swordMatrix = MMult(rotationMatrix, handWorldMatrix);
+
+	//剣モデルにマトリックスを設定
+	MV1SetMatrix(m_modelHandle1, swordMatrix);
+
+
 
 	// 死んだ時
 	if (m_state == kDeath)
@@ -192,17 +206,37 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 
 	if (!m_isAttack)
 	{
-		//攻撃の時
+		// カウンターを減らす
+		if (m_attackDelayCounter > 0)
+		{
+
+			m_attackDelayCounter--;
+		}
+	
+		// 攻撃状態かつプレイヤーのHPがある場合
 		if (m_state == kAttack && m_pUi->GetPlayerHp() > 0)
 		{
-			if (!m_isAttack && m_attackDelayCounter == 0)
+			if(m_attackDelayCounter <= 0)
 			{
-					if (!m_isAttack)
-					{
-						ChangeAnim(kAttackAnimIndex);
-					}
-					m_isAttack = true;
-					m_attackDelayCounter = kAttackDelayDuration; // 攻撃遅延カウンタをリセット
+				// 最初の攻撃
+				ChangeAnim(kAttackAnimIndex);
+				m_isAttack = true;
+
+				// 次回の攻撃までのランダムな遅延（例：100?250フレーム）
+				const int minDelay = 50;
+				const int maxDelay = 150;
+				m_attackDelayCounter = rand() % (maxDelay - minDelay + 1) + minDelay;
+			}
+		}
+		else
+		{
+			if (m_attackDelayCounter <= 0)
+			{
+				// 次回の攻撃までのランダムな遅延（例：100?250フレーム）
+				const int minDelay = 30;
+				const int maxDelay = 50;
+				m_attackDelayCounter = rand() % (maxDelay - minDelay + 1) + minDelay;
+
 			}
 		}
 
@@ -251,12 +285,25 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 			//プレイヤーの方向を向く
 			MV1SetRotationXYZ(m_modelHandle, VGet(0.0f, m_angle.y + DX_PI_F, 0.0f));
 
-			if (!m_isRnu)
+			// プレイヤーとの距離でアニメーションを分岐
+			if (IsStopColliding(m_pPlayer))
 			{
-				ChangeAnim(kRnuAnimIndex);
+				// 停止範囲に入ったらアイドルアニメーションに切り替える
+				if (m_animIndex != kIdleAnimIndex)
+				{
+					ChangeAnim(kIdleAnimIndex);
+					m_animIndex = kIdleAnimIndex;
+				}
 			}
-			m_animIndex = kRnuAnimIndex;
-
+			else
+			{
+				// 歩きアニメーション（既に再生中かチェック）
+				if (m_animIndex != kRnuAnimIndex)
+				{
+					ChangeAnim(kRnuAnimIndex);
+					m_animIndex = kRnuAnimIndex;
+				}
+			}
 			m_isRnu = true;
 
 		}
@@ -323,25 +370,6 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 	//エネミーモデルの回転値
 	MV1SetRotationXYZ(m_modelHandle, m_angle);
 
-	float rotX = DX_PI / 1.0f;	
-	float rotY = DX_PI / 2.0f;	
-	float rotZ = DX_PI / 2.0f;	
-
-	//回転行列を作成
-	MATRIX rotMatrixX = MGetRotX(rotX);
-	MATRIX rotMatrixY = MGetRotY(rotY);
-	MATRIX rotMatrixZ = MGetRotZ(rotZ);
-
-	MATRIX rotationMatrix = MMult(rotMatrixX, MMult(rotMatrixY, rotMatrixZ));
-
-	//手のワールドマトリックスを取得
-	MATRIX handWorldMatrix = MV1GetFrameLocalWorldMatrix(m_modelHandle, 66);
-
-	//回転を手のマトリックスに適用
-	MATRIX swordMatrix = MMult(rotationMatrix, handWorldMatrix);
-
-	//剣モデルにマトリックスを設定
-	MV1SetMatrix(m_modelHandle1, swordMatrix);
 
 }
 
@@ -727,7 +755,7 @@ void Enemy::CorrectPosition(Stage& stage)
 				//当たった場合
 
 				//接触したポリゴンで一番高いＹ座標をプレイヤーのＹ座標にする
-				m_mapHitColl.y = MaxY;
+				m_pos.y = MaxY;
 
 				//Ｙ軸方向の移動速度は０に
 				m_move.y = 0.0f;

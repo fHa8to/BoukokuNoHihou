@@ -2,8 +2,9 @@
 #include "DxLib.h"
 #include <cmath>
 #include <cassert>
-
-
+#include "Player.h"
+#include "Pad.h"
+#include "Ui.h"
 
 
 namespace
@@ -27,6 +28,9 @@ namespace
 	constexpr int upperPart = 20;	//上部
 	constexpr int bottom = 2;		//下部
 
+	constexpr int kDiscoveryRadius = 15.0f;
+
+
 }
 
 
@@ -37,10 +41,14 @@ Explanation::Explanation():
 	m_animBlendRate(0.0f),
 	m_angle(kModelAngle),
 	m_modelRadius(kModelRadius),
+	m_discoveryRadius(kDiscoveryRadius),
 	m_pos(VGet(0.0f, 0.0f, 0.0f)),
-	m_headPos(VGet(0.0f, 0.0f, 0.0f))
+	m_headPos(VGet(0.0f, 0.0f, 0.0f)),
+	m_isRange(false),
+	m_isButton(false)
 {
 	m_pos = VGet(-20.0f, 1.0f, -40.0f);
+	m_pUi = std::make_shared<Ui>();
 
 
 }
@@ -62,8 +70,9 @@ void Explanation::Init()
 
 }
 
-void Explanation::Update()
+void Explanation::Update(std::shared_ptr<Player> m_pPlayer)
 {
+
 	// アニメーションを進める（ループ再生）
 	UpdateAnim(m_currentAnimNo);
 
@@ -73,16 +82,49 @@ void Explanation::Update()
 	MV1SetPosition(m_modelHandle, m_pos);
 	MV1SetRotationXYZ(m_modelHandle, VGet(0.0f, m_angle, 0.0f));
 
+	if (Translation(m_pPlayer))
+	{
+		m_isRange = true;
+
+		// ボタンを押した瞬間のみ反応
+		if (Pad::IsTrigger(PAD_INPUT_4))
+		{
+			m_isButton = !m_isButton; // トグル切り替え
+		}
+	}
+	else
+	{
+		m_isRange = false;
+		m_isButton = false;
+	}
+
+	
 }
 
 void Explanation::Draw()
 {
+
 	//エネミーモデル描画
 	MV1DrawModel(m_modelHandle);
+
+	if (m_isRange == true)
+	{
+		m_pUi->ButtonDraw();
+	}
+
+	if (m_isButton == true)
+	{
+		m_pUi->ExplanationDraw();
+	}
+
+
 #ifdef _DEBUG
 
 	//当たり判定カプセル
 	DrawCapsule3D(VGet(m_pos.x, m_pos.y + upperPart, m_pos.z), VGet(m_pos.x, m_pos.y + bottom, m_pos.z), m_modelRadius, 10, m_color, m_color, false);
+
+	//索敵範囲球
+	DrawSphere3D(VAdd(m_pos, VGet(0, 0, 0)), m_discoveryRadius, 10, m_color, m_color, false);
 
 #endif
 
@@ -92,6 +134,7 @@ void Explanation::End()
 {
 	MV1DeleteModel(m_modelHandle);
 	m_modelHandle = -1;
+	m_pUi->End();
 }
 
 
@@ -120,3 +163,22 @@ bool Explanation::UpdateAnim(int attachNo)
 	return isLoop;
 }
 
+//索敵範囲当たり判定
+bool Explanation::Translation(std::shared_ptr<Player> m_pPlayer)
+{
+	float delX = (m_pos.x - m_pPlayer->GetPos().x) * (m_pos.x - m_pPlayer->GetPos().x);
+	float delY = (m_pos.y - m_pPlayer->GetPos().y) * (m_pos.y - m_pPlayer->GetPos().y);
+	float delZ = (m_pos.z - m_pPlayer->GetPos().z) * (m_pos.z - m_pPlayer->GetPos().z);
+
+	//球と球の距離
+	float Distance = sqrt(delX + delY + delZ);
+
+	//球と球の距離が剣とエネミーの半径よりも小さい場合
+	if (Distance < m_discoveryRadius + m_pPlayer->GetRadius())
+	{
+
+		return true;
+	}
+
+	return false;
+}

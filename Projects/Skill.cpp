@@ -110,7 +110,7 @@ void Skill::Update(Player& player)
 	bool isLoop = UpdateAnim(m_currentAnimNo);
 	if (isLoop)
 	{
-		if (!m_isStopEnd) ChangeAnim(m_animIndex);
+		ChangeAnim(m_animIndex);
 	}
 	UpdateAnim(m_prevAnimNo);
 
@@ -224,7 +224,7 @@ float Skill::GetAttackAnimSpeed(int animIndex)
 	case kAttack2AnimIndex:
 		return 1.6f; // 攻撃2の再生速度
 	case kAttack3AnimIndex:
-		return 1.78f; // 攻撃3の再生速度
+		return 2.0f; // 攻撃3の再生速度
 	default:
 		return 1.5f; // デフォルトの再生速度
 	}

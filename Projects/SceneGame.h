@@ -37,7 +37,9 @@ public:
 	virtual void Draw() override final;
 	virtual void End() override final;
 
+
 	void DrawGrid();
+
 
 
 private:
@@ -60,6 +62,7 @@ private:
 
 	//ƒ‚ƒfƒ‹ƒnƒ“ƒhƒ‹
 	int m_modelHandle;
+
 
 	int m_textHandle;
 
