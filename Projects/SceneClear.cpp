@@ -10,7 +10,7 @@
 namespace
 {
 	//Playerモデルデータ
-	const char* const kPlayerModel = "data/model/skeleton/skeleton1.mv1";
+	const char* const kPlayerModel = "data/model/ArcticTextures/player.mv1";
 	//BGMのファイル名
 	const char* const kBgmButton = "data/sound/Titledecide.mp3";
 
