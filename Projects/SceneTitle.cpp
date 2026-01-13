@@ -264,24 +264,11 @@ void SceneTitle::Draw()
 	const int menuSpacing = 40;
 
 
+	// 選択中の項目の位置に矢印を描画
+	int arrowX = menuX - 40; // 画像の位置（左に寄せる）
+	int arrowY = menuY + m_selectedMenuItem * menuSpacing;
 
-	const char* menuItems[kMenuItemCount] = { "",""};
-
-	for (int i = 0; i < kMenuItemCount; ++i)
-	{
-		int color = (i == m_selectedMenuItem) ? GetColor(255, 0, 0) : GetColor(255, 255, 255);
-
-		// 選択中の項目の左に矢印画像を描画
-		if (i == m_selectedMenuItem)
-		{
-			int arrowX = menuX - 40; // 画像の位置（左に寄せる）
-			int arrowY = menuY + i * menuSpacing;
-
-			DrawGraph(arrowX, arrowY, m_arrowHandle, true); // true = 半透明対応
-		}
-
-		DrawString(menuX, menuY + i * menuSpacing, menuItems[i], color);
-	}
+	DrawGraph(arrowX, arrowY, m_arrowHandle, true); // true = 半透明対応
 
 	//フェードの描画
 	SetDrawBlendMode(DX_BLENDMODE_ALPHA, m_fadeAlpha); //半透明で表示
