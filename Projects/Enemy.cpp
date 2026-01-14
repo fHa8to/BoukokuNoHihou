@@ -17,6 +17,9 @@ namespace
 	const char* const kModelCharacterFilename = "data/model/skeleton/skeleton1.mv1";
 	const char* const kModelWeaponFilename = "data/model/weapon/sword.mv1";
 
+	//BGMのファイル名
+	const char* const kBgmAttack = "data/sound/Attack.mp3";
+
 	//モデルのサイズ変更
 	constexpr float kExpansion = 0.1f;
 
@@ -221,6 +224,8 @@ void Enemy::Update(std::shared_ptr<Player> m_pPlayer, std::shared_ptr<Ui> m_pUi,
 				// 最初の攻撃
 				ChangeAnim(kAttackAnimIndex);
 				m_isAttack = true;
+
+				PlaySoundFile(kBgmAttack, DX_PLAYTYPE_BACK);
 
 				// 次回の攻撃までのランダムな遅延（例：100?250フレーム）
 				const int minDelay = 50;

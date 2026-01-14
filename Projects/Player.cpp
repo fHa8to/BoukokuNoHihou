@@ -198,6 +198,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 	{
 		Move(); 
 		m_isMove = true;
+
 	}
 
 
@@ -221,7 +222,12 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 		{
 			m_isAttack = true;
 
-			PlaySoundFile(kBgmAttack, DX_PLAYTYPE_BACK);
+			if (!m_isOnCooldown)
+			{
+
+				PlaySoundFile(kBgmAttack, DX_PLAYTYPE_BACK);
+			}
+
 
 		}
 	}
@@ -234,6 +240,7 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 		if (m_runFrame > 5)
 		{
 			m_isRun = true;
+
 
 		}
 	}

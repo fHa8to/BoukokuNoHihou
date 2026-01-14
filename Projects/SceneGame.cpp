@@ -17,7 +17,10 @@ namespace
     //フェード値の増減
     constexpr int kFadeUpDown = 8;
 
-
+    //BGMのファイル名
+    const char* const kBgmAttack = "data/sound/AttackDamage.mp3";
+    const char* const kBgmSkillDamage = "data/sound/SkillDamage.mp3";
+    
 }
 
 SceneGame::SceneGame() :
@@ -261,6 +264,9 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                 m_pPlayer->SetSkillAttackHit(true); // フラグを設定
                 m_pEffectManager->DrawBossEnemyDamageEffect(m_pBossEnemy);
 
+                PlaySoundFile(kBgmSkillDamage, DX_PLAYTYPE_BACK);
+
+
                 if (m_pUi->GetBossHp() >= 1)
                 {
                     m_pBossEnemy->SetState(BossEnemy::kDamage);
@@ -279,6 +285,8 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                     m_pEnemy->SetHp(enemyHp);
                     m_pPlayer->SetSkillAttackHit(true); // フラグを設定
                     m_pEffectManager->DrawEnemyDamageEffect(m_pEnemy);
+
+                    PlaySoundFile(kBgmSkillDamage, DX_PLAYTYPE_BACK);
 
                     if (m_pEnemy->GetHp() >= 1)
                     {
@@ -306,6 +314,8 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                             m_pPlayer->SetAttackHit(true);
                             m_pEffectManager->DrawBossEnemyDamageEffect(m_pBossEnemy);
 
+                            PlaySoundFile(kBgmAttack, DX_PLAYTYPE_BACK);
+
                             if (m_pUi->GetBossHp() >= 1)
                             {
                                 m_pBossEnemy->SetState(BossEnemy::kDamage);
@@ -328,6 +338,9 @@ std::shared_ptr<SceneBase> SceneGame::Update()
                     m_pEnemy->SetHp(enemyHp);
                     m_pPlayer->SetAttackHit(true);
                     m_pEffectManager->DrawEnemyDamageEffect(m_pEnemy);
+
+                    PlaySoundFile(kBgmAttack, DX_PLAYTYPE_BACK);
+
 
                     if (m_pEnemy->GetHp() >= 1)
                     {

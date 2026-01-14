@@ -11,6 +11,11 @@ namespace
 	//モデルのファイル名
 	const char* const kModelFilename = "data/model/skeleton/Skill1.mv1";
 
+
+	const char* const kBgmSkill = "data/sound/Skill.mp3";
+	const char* const kBgmSkill3 = "data/sound/Skill3.mp3";
+
+
 	//モデルの向いてる位置の初期化
 	constexpr float kInitAngle = 3.143059f;
 
@@ -272,14 +277,20 @@ void Skill::AttackAnim()
 		if (m_currentAttackAnimIndex == kAttack1AnimIndex)
 		{
 			m_currentAttackAnimIndex = kAttack2AnimIndex;
+			PlaySoundFile(kBgmSkill, DX_PLAYTYPE_BACK);
+
 		}
 		else if (m_currentAttackAnimIndex == kAttack2AnimIndex)
 		{
 			m_currentAttackAnimIndex = kAttack3AnimIndex;
+			PlaySoundFile(kBgmSkill, DX_PLAYTYPE_BACK);
+
 		}
 		else
 		{
 			m_currentAttackAnimIndex = kAttack1AnimIndex;
+			PlaySoundFile(kBgmSkill3, DX_PLAYTYPE_BACK);
+
 		}
 	}
 	m_animIndex = m_currentAttackAnimIndex;
