@@ -18,7 +18,7 @@ namespace
 	const char* const kModelFilename1 = "data/model/weapon/sword.mv1";
 
 	//BGMのファイル名
-	const char* const kBgmButton = "data/sound/Attack.mp3";
+	const char* const kBgmAttack = "data/sound/Attack.mp3";
 
 
 	//モデルの向いてる位置の初期化
