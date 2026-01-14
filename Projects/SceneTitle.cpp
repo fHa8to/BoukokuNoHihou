@@ -16,6 +16,7 @@ namespace
 {
 	//Enemyモデル
 	const char* const kEnemyModel = "data/model/skeleton/skeleton1.mv1";
+
 	//BGMのファイル名
 	const char* const kBgmButton = "data/sound/Titledecide.mp3";
 

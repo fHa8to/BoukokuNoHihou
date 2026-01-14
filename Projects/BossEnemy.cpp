@@ -507,14 +507,14 @@ void BossEnemy::CorrectPosition(Stage& stage)
 	m_mapHitColl = VAdd(OldPos, m_move);
 
 
-	//プレイヤーの周囲にあるステージポリゴンを取得する
+	//ボスの周囲にあるステージポリゴンを取得する
 	HitDim = MV1CollCheck_Sphere(stage.GetCollisionMap(), -1, stage.GetVectorMapPos(), 1500.0f);
 
 	for (int i = 0; i < HitDim.HitNum; i++)
 	{
 		if (HitDim.Dim[i].Normal.y < 0.000001f && HitDim.Dim[i].Normal.y > -0.0000001f)
 		{
-			//壁ポリゴンと判断された場合でも、プレイヤーのＹ座標＋１．０ｆより高いポリゴンのみ当たり判定を行う
+			//壁ポリゴンと判断された場合でも、ボスのＹ座標＋１．０ｆより高いポリゴンのみ当たり判定を行う
 			if (HitDim.Dim[i].Position[0].y > m_pos.y + 1.0f ||
 				HitDim.Dim[i].Position[1].y > m_pos.y + 1.0f ||
 				HitDim.Dim[i].Position[2].y > m_pos.y + 1.0f)
@@ -614,7 +614,7 @@ void BossEnemy::CorrectPosition(Stage& stage)
 				{
 					Poly = Kabe[k];
 
-					//プレイヤーと当たっているかを判定
+					//ボスと当たっているかを判定
 					if (HitCheck_Capsule_Triangle(m_mapHitColl, VAdd(m_mapHitColl, VGet(0.0f, upperPart, 0.0f)), m_modelRadius,
 						Poly->Position[0], Poly->Position[1], Poly->Position[2]) == false) continue;
 
@@ -679,7 +679,7 @@ void BossEnemy::CorrectPosition(Stage& stage)
 			//接触したポリゴンがあったかどうかで処理を分岐
 			if (m_hitFlag)
 			{
-				//接触した場合はプレイヤーのＹ座標を接触座標を元に更新
+				//接触した場合はボスのＹ座標を接触座標を元に更新
 				m_mapHitColl.y = MinY - upperPart;
 
 				//Ｙ軸方向の速度は反転
@@ -726,8 +726,8 @@ void BossEnemy::CorrectPosition(Stage& stage)
 			{
 				//当たった場合
 
-				//接触したポリゴンで一番高いＹ座標をプレイヤーのＹ座標にする
-				m_pos.y = MaxY;
+				//接触したポリゴンで一番高いＹ座標をボスのＹ座標にする
+				m_pos.y = MaxY - upperPart;
 
 				//Ｙ軸方向の移動速度は０に
 				m_move.y = 0.0f;
@@ -737,7 +737,7 @@ void BossEnemy::CorrectPosition(Stage& stage)
 	}
 
 
-	//検出したプレイヤーの周囲のポリゴン情報を開放する
+	//検出したボスの周囲のポリゴン情報を開放する
 	MV1CollResultPolyDimTerminate(HitDim);
 }
 

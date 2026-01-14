@@ -17,6 +17,10 @@ namespace
 	const char* const kModelFilename = "data/model/ArcticTextures/player.mv1";
 	const char* const kModelFilename1 = "data/model/weapon/sword.mv1";
 
+	//BGMのファイル名
+	const char* const kBgmButton = "data/sound/Attack.mp3";
+
+
 	//モデルの向いてる位置の初期化
 	constexpr float kInitAngle = 0;
 
@@ -216,6 +220,9 @@ void Player::Update(std::shared_ptr<Enemy> m_pEnemy, std::shared_ptr<BossEnemy> 
 		if (Pad::IsPress(PAD_INPUT_3))
 		{
 			m_isAttack = true;
+
+			PlaySoundFile(kBgmAttack, DX_PLAYTYPE_BACK);
+
 		}
 	}
 

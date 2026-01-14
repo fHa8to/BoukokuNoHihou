@@ -516,7 +516,7 @@ bool Enemy::IsStopColliding(std::shared_ptr<Player> m_pPlayer)
 	//球と球の距離
 	float Distance = sqrt(delX + delY + delZ);
 
-	//球と球の距離が剣とエネミーの半径よりも小さい場合
+	//球と球の距離が剣とプレイヤーの半径よりも小さい場合
 	if (Distance < m_stopRadius + m_pPlayer->GetRadius())
 	{
 
@@ -535,7 +535,7 @@ void Enemy::CorrectPosition(Stage& stage)
 	m_mapHitColl = VAdd(OldPos, m_move);
 
 
-	//プレイヤーの周囲にあるステージポリゴンを取得する
+	//敵の周囲にあるステージポリゴンを取得する
 	HitDim = MV1CollCheck_Sphere(stage.GetCollisionMap(), -1, stage.GetVectorMapPos(), 1500.0f);
 
 	for (int i = 0; i < HitDim.HitNum; i++)
@@ -584,7 +584,7 @@ void Enemy::CorrectPosition(Stage& stage)
 			{
 				Poly = Kabe[i];
 
-				//ポリゴンとプレイヤーが当たっていなかったら次のカウントへ
+				//ポリゴンと敵が当たっていなかったら次のカウントへ
 				if (HitCheck_Capsule_Triangle(m_mapHitColl, VAdd(m_mapHitColl, VGet(0.0f, upperPart, 0.0f)), m_modelRadius,
 					Poly->Position[0], Poly->Position[1], Poly->Position[2]) == false) continue;
 
@@ -646,7 +646,7 @@ void Enemy::CorrectPosition(Stage& stage)
 					if (HitCheck_Capsule_Triangle(m_mapHitColl, VAdd(m_mapHitColl, VGet(0.0f, upperPart, 0.0f)), m_modelRadius,
 						Poly->Position[0], Poly->Position[1], Poly->Position[2]) == false) continue;
 
-					//当たっていたら規定距離分プレイヤーを壁の法線方向に移動させる
+					//当たっていたら規定距離分敵を壁の法線方向に移動させる
 					m_pos = VAdd(m_pos, VScale(Poly->Normal, kSpeed));
 
 					//移動した上で壁ポリゴンと接触しているかどうかを判定
@@ -707,7 +707,7 @@ void Enemy::CorrectPosition(Stage& stage)
 			//接触したポリゴンがあったかどうかで処理を分岐
 			if (m_hitFlag)
 			{
-				//接触した場合はプレイヤーのＹ座標を接触座標を元に更新
+				//接触した場合は敵のＹ座標を接触座標を元に更新
 				m_mapHitColl.y = MinY - upperPart;
 
 				//Ｙ軸方向の速度は反転
